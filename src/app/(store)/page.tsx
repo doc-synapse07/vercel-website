@@ -38,12 +38,12 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 
 function TrustBadge({ icon: Icon, title, text }: { icon: React.ComponentType<{ size?: number }>; title: string; text: string }) {
   return (
-    <div className="group rounded-card border border-ink-200 bg-white p-6 transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg dark:border-ink-700 dark:bg-ink-800 dark:hover:border-brand-500">
-      <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300 group-hover:bg-brand-100 dark:group-hover:bg-brand-900 transition-colors">
-        <Icon size={22} />
+    <div className="group rounded-card border border-ink-200 bg-white p-4 sm:p-6 transition-all hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg dark:border-ink-700 dark:bg-ink-800 dark:hover:border-brand-500">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300 group-hover:bg-brand-100 dark:group-hover:bg-brand-900 transition-colors">
+        <Icon size={20} />
       </div>
-      <h3 className="mb-1.5 text-base font-semibold text-ink-900 dark:text-white">{title}</h3>
-      <p className="text-sm leading-relaxed text-ink-600 dark:text-ink-400">{text}</p>
+      <h3 className="mb-1 text-sm font-semibold text-ink-900 dark:text-white">{title}</h3>
+      <p className="text-xs leading-relaxed text-ink-600 dark:text-ink-400">{text}</p>
     </div>
   );
 }
@@ -156,14 +156,14 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2.5">
-              <Link href="/products" className="btn btn-primary btn-lg">
+            <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+              <Link href="/products" className="btn btn-primary btn-lg w-full sm:w-auto">
                 Browse notes <ArrowRight size={16} />
               </Link>
-              <Link href="/services" className="btn btn-outline btn-lg">
+              <Link href="/services" className="btn btn-outline btn-lg w-full sm:w-auto">
                 Video services
               </Link>
-              <Link href="/contact" className="btn btn-outline btn-lg">
+              <Link href="/contact" className="btn btn-outline btn-lg w-full sm:w-auto">
                 Get in touch
               </Link>
             </div>
@@ -178,7 +178,7 @@ export default async function HomePage() {
           <h2 className="text-2xl font-bold tracking-tight text-ink-900 dark:text-white sm:text-3xl">
             Community & output
           </h2>
-          <div className="mt-6 grid grid-cols-3 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 gap-y-4">
             {statItems.map((item) => {
               const Content = item.href ? "a" : "div";
               const extraProps = item.href
@@ -237,7 +237,7 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {popular.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -254,7 +254,7 @@ export default async function HomePage() {
       {/* ==================================================================== CATEGORIES / SHOP BY EXAM */}
       {categories.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-14">
-          <div className="mb-6 flex items-center justify-between">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <Eyebrow>
                 Exam notes · {stats.products} products · {stats.categories} exams
@@ -265,18 +265,18 @@ export default async function HomePage() {
             </div>
             <Link
               href="/products"
-              className="btn btn-outline btn-sm hidden sm:inline-flex"
+              className="btn btn-outline btn-sm self-start sm:self-auto"
             >
               View all {stats.products} products <ArrowRight size={14} />
             </Link>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 2xl:grid-cols-6">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {categories.map((c) => (
               <Link
                 key={c.slug}
                 href={`/category/${c.slug}`}
-                className="group card-glow relative flex flex-col overflow-hidden rounded-card border border-ink-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg hover:shadow-brand-900/5 dark:border-ink-700 dark:bg-ink-800 dark:hover:border-brand-500 dark:hover:shadow-black/40"
+                className="group card-glow relative flex flex-col overflow-hidden rounded-card border border-ink-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg hover:shadow-brand-900/5 dark:border-ink-700 dark:bg-ink-800 dark:hover:border-brand-500 dark:hover:shadow-black/40 min-h-[180px]"
               >
                 <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-700 group-hover:bg-brand-100 group-hover:text-brand-800 dark:bg-brand-950 dark:text-brand-300 dark:group-hover:bg-brand-900 dark:group-hover:text-brand-400 transition-all">
                   <FileText size={18} />
@@ -310,7 +310,7 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {trustSignals.map((signal, i) => (
               <TrustBadge key={i} {...signal} />
             ))}
@@ -331,11 +331,11 @@ export default async function HomePage() {
                 We create review videos, demos and promos for physical products, courses and digital products — published to an audience of medical aspirants who buy study material. Feature your product with honest content that drives sales.
               </p>
             </div>
-            <div className="flex flex-wrap justify-center lg:justify-end gap-2.5">
-              <Link href="/contact" className="btn btn-primary btn-md">
+            <div className="flex flex-col sm:flex-row justify-center lg:justify-end gap-2.5 w-full">
+              <Link href="/contact" className="btn btn-primary btn-md w-full sm:w-auto">
                 Start collaboration <ArrowRight size={15} />
               </Link>
-              <Link href="/services" className="btn btn-outline btn-md">
+              <Link href="/services" className="btn btn-outline btn-md w-full sm:w-auto">
                 Our services
               </Link>
             </div>
@@ -353,13 +353,13 @@ export default async function HomePage() {
           <p className="mb-6 max-w-xl mx-auto text-sm leading-relaxed text-ink-600 dark:text-ink-400">
             Join our community for exam tips, new product alerts and exclusive coupons.
           </p>
-          <div className="flex flex-wrap justify-center gap-2.5">
+          <div className="flex flex-col sm:flex-row justify-center gap-2.5 w-full">
             {settings.telegramUrl && (
               <a
                 href={settings.telegramUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-primary btn-md"
+                className="btn btn-primary btn-md w-full sm:w-auto"
               >
                 <Send size={15} /> Join Telegram
               </a>
@@ -369,12 +369,12 @@ export default async function HomePage() {
                 href={settings.whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn btn-outline btn-md"
+                className="btn btn-outline btn-md w-full sm:w-auto"
               >
                 <MessageCircle size={15} /> WhatsApp Channel
               </a>
             )}
-            <Link href="/products" className="btn btn-outline btn-md">
+            <Link href="/products" className="btn btn-outline btn-md w-full sm:w-auto">
               Browse store
             </Link>
           </div>
