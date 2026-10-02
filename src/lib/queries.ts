@@ -1,25 +1,26 @@
-import { prisma } from "./db";
 import { unstable_cache } from "next/cache";
-import type { ProductCardData, CategoryNav } from "./types";
+import {
+  getProducts as getProductsRaw,
+  getPublishedProducts,
+  getProductBySlug as getProductBySlugRaw,
+  getFeaturedProducts as getFeaturedProductsRaw,
+  getRelatedProducts as getRelatedProductsRaw,
+  getProductsByCategory as getProductsByCategoryRaw,
+  getCategories as getCategoriesRaw,
+  getCategoryBySlug as getCategoryBySlugRaw,
+  getOrders,
+  getOrder,
+  getCustomers,
+  getCustomerByEmail,
+  getCustomerById,
+  getSettings as getSettingsRaw,
+  getStoreStats as getStoreStatsRaw,
+} from "./store";
+import { prisma } from "./db";
+import type { ProductCardData, CategoryNav, Product, Category, Order, Customer, Settings } from "./types";
+import { formatINR } from "./utils";
 
-/** Maps a Prisma product row (with category + file count) to the card view model. */
-type ProductRow = {
-  id: string;
-  slug: string;
-  title: string;
-  shortDescription: string | null;
-  pricePaise: number;
-  mrpPaise: number | null;
-  coverImage: string | null;
-  productType: string;
-  isFree: boolean;
-  isFeatured: boolean;
-  category: { name: string; slug: string };
-  _count?: { files: number };
-  files?: { id: string }[];
-};
-
-export function toCardData(p: ProductRow): ProductCardData {
+function toCardData(p: Product): ProductCardData {
   return {
     id: p.id,
     slug: p.slug,
@@ -31,25 +32,14 @@ export function toCardData(p: ProductRow): ProductCardData {
     productType: p.productType,
     isFree: p.isFree,
     isFeatured: p.isFeatured,
-    category: p.category,
-    fileCount: p._count?.files ?? p.files?.length ?? 0,
+    category: { name: p.categorySlug, slug: p.categorySlug },
+    fileCount: p.files?.length ?? 0,
   };
 }
 
-const CARD_SELECT = {
-  id: true,
-  slug: true,
-  title: true,
-  shortDescription: true,
-  pricePaise: true,
-  mrpPaise: true,
-  coverImage: true,
-  productType: true,
-  isFree: true,
-  isFeatured: true,
-  category: { select: { name: true, slug: true } },
-  _count: { select: { files: true } },
-} as const;
+function toCategoryNav(c: Category): CategoryNav {
+  return { name: c.name, slug: c.slug, productCount: 0 };
+}
 
 // Cache tags for revalidation
 export const CACHE_TAGS = {
@@ -62,28 +52,18 @@ export const CACHE_TAGS = {
 // Cached queries with tags
 export const getCategories = unstable_cache(
   async (): Promise<CategoryNav[]> => {
-    const rows = await prisma.category.findMany({
-      where: { isActive: true },
-      orderBy: { sortOrder: "asc" },
-      select: {
-        name: true,
-        slug: true,
-        _count: { select: { products: { where: { isActive: true } } } },
-      },
-    });
-    return rows.map((r) => ({ name: r.name, slug: r.slug, productCount: r._count.products }));
+    const items = await getCategoriesRaw();
+    return items.map(toCategoryNav);
   },
   ["categories"],
   { tags: [CACHE_TAGS.categories], revalidate: 3600 }
 );
 
-export async function getCategoryBySlug(slug: string) {
+export async function getCategoryBySlug(slug: string): Promise<{ id: string; name: string; slug: string; description: string | null } | null> {
   return unstable_cache(
     async () => {
-      return prisma.category.findUnique({
-        where: { slug },
-        select: { id: true, name: true, slug: true, description: true },
-      });
+      const cat = await getCategoryBySlugRaw(slug);
+      return cat ? { id: cat.slug, name: cat.name, slug: cat.slug, description: cat.description } : null;
     },
     [slug],
     { tags: [CACHE_TAGS.category(slug)], revalidate: 3600 }
@@ -99,52 +79,50 @@ export type ProductListOptions = {
   featuredOnly?: boolean;
 };
 
-export async function getProducts(opts: ProductListOptions = {}) {
-  const where: Record<string, unknown> = { isActive: true };
+export async function getProducts(opts: ProductListOptions = {}): Promise<{ products: ProductCardData[]; total: number }> {
+  let items = await getPublishedProducts();
 
-  if (opts.categorySlug) where.category = { slug: opts.categorySlug, isActive: true };
-  if (opts.featuredOnly) where.isFeatured = true;
+  if (opts.categorySlug) items = items.filter((p) => p.categorySlug === opts.categorySlug);
+  if (opts.featuredOnly) items = items.filter((p) => p.isFeatured);
 
   const search = opts.search?.trim();
   if (search) {
-    where.OR = [
-      { title: { contains: search } },
-      { shortDescription: { contains: search } },
-      { description: { contains: search } },
-    ];
+    const lower = search.toLowerCase();
+    items = items.filter(
+      (p) =>
+        p.title.toLowerCase().includes(lower) ||
+        p.shortDescription?.toLowerCase().includes(lower) ||
+        p.description?.toLowerCase().includes(lower)
+    );
   }
 
   const orderBy =
     opts.sort === "price_asc"
-      ? [{ pricePaise: "asc" as const }]
+      ? (a: Product, b: Product) => a.pricePaise - b.pricePaise
       : opts.sort === "price_desc"
-        ? [{ pricePaise: "desc" as const }]
-        : [{ createdAt: "desc" as const }];
+        ? (a: Product, b: Product) => b.pricePaise - a.pricePaise
+        : (a: Product, b: Product) => new Date(b.id).getTime() - new Date(a.id).getTime();
 
-  const [rows, total] = await Promise.all([
-    prisma.product.findMany({
-      where,
-      orderBy,
-      select: CARD_SELECT,
-      take: opts.take,
-      skip: opts.skip,
-    }),
-    prisma.product.count({ where }),
-  ]);
+  items.sort(orderBy);
+  const total = items.length;
+  if (opts.skip) items = items.slice(opts.skip);
+  if (opts.take) items = items.slice(0, opts.take);
 
-  return { products: rows.map(toCardData), total };
+  return { products: items.map(toCardData), total };
 }
 
 export async function getProductBySlug(slug: string) {
   return unstable_cache(
     async () => {
-      return prisma.product.findFirst({
-        where: { slug, isActive: true },
-        include: {
-          category: { select: { name: true, slug: true } },
-          files: { orderBy: { sortOrder: "asc" }, select: { id: true, fileName: true, sizeBytes: true } },
-        },
-      });
+      const product = await getProductBySlugRaw(slug);
+      if (!product) return null;
+      return {
+        ...product,
+        pricePaise: product.pricePaise,
+        mrpPaise: product.mrpPaise,
+        category: { name: product.categorySlug, slug: product.categorySlug },
+        files: product.files,
+      };
     },
     [slug],
     { tags: [CACHE_TAGS.product(slug)], revalidate: 3600 }
@@ -152,53 +130,39 @@ export async function getProductBySlug(slug: string) {
 }
 
 export async function getFeaturedProducts(take = 8): Promise<ProductCardData[]> {
-  const rows = await prisma.product.findMany({
-    where: { isActive: true, isFeatured: true },
-    orderBy: { createdAt: "desc" },
-    select: CARD_SELECT,
-    take,
-  });
-  return rows.map(toCardData);
+  const items = await getFeaturedProductsRaw(take);
+  return items.map(toCardData);
 }
 
 /** Products sorted by popularity (featured first, then newest) */
 export async function getPopularProducts(take = 4): Promise<ProductCardData[]> {
-  const rows = await prisma.product.findMany({
-    where: { isActive: true },
-    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-    select: CARD_SELECT,
-    take,
-  });
-  return rows.map(toCardData);
+  return unstable_cache(
+    async () => {
+      const rows = await prisma.product.findMany({
+        where: { isActive: true },
+        orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+        select: CARD_SELECT,
+        take,
+      });
+      return rows.map(toCardData);
+    },
+    [`popular-${take}`],
+    { tags: [CACHE_TAGS.products], revalidate: 3600 }
+  )();
 }
 
-/**
- * Products a customer can actually buy right now — a PDF is attached.
- * The homepage featured row uses this so it never advertises a "Coming soon"
- * card as the face of the store. Hides itself when nothing is ready.
- */
-export async function getReadyProducts(take = 4): Promise<ProductCardData[]> {
-  const rows = await prisma.product.findMany({
-    where: { isActive: true, files: { some: {} } },
-    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-    select: CARD_SELECT,
-    take,
-  });
-  return rows.map(toCardData);
+export async function getProductsByCategory(categorySlug: string): Promise<ProductCardData[]> {
+  const items = await getProductsByCategoryRaw(categorySlug);
+  return items.map(toCardData);
 }
 
 export async function getRelatedProducts(
   productId: string,
-  categoryId: string,
+  categorySlug: string,
   take = 4,
 ): Promise<ProductCardData[]> {
-  const rows = await prisma.product.findMany({
-    where: { isActive: true, categoryId, id: { not: productId } },
-    orderBy: { createdAt: "desc" },
-    select: CARD_SELECT,
-    take,
-  });
-  return rows.map(toCardData);
+  const items = await getRelatedProductsRaw(productId, categorySlug, take);
+  return items.map(toCardData);
 }
 
 export async function getActiveCouponCodes(): Promise<string[]> {
@@ -210,14 +174,32 @@ export async function getActiveCouponCodes(): Promise<string[]> {
 }
 
 export async function getStoreStats() {
-  const [products, categories, freeProducts, customers, downloads] = await Promise.all([
-    prisma.product.count({ where: { isActive: true } }),
-    prisma.category.count({ where: { isActive: true } }),
-    prisma.product.count({ where: { isActive: true, isFree: true } }),
-    prisma.customer.count(),
-    prisma.downloadGrant.count(),
-  ]);
-  return { products, categories, freeProducts, customers, downloads };
+  const stats = await getStoreStatsRaw();
+  return {
+    products: stats.products,
+    categories: stats.categories,
+    freeProducts: stats.freeProducts,
+    customers: stats.customers,
+    downloads: stats.downloads,
+  };
 }
 
-export type { ProductRow };
+export async function getSettings(): Promise<Settings> {
+  const raw = await getSettingsRaw();
+  return {
+    siteName: raw.siteName || "SYNAPSE.07",
+    siteTagline: raw.siteTagline || "Learn Smart. Revise Fast. Crack Exams.",
+    supportEmail: raw.supportEmail || "support@synapse07.store",
+    supportPhone: raw.supportPhone || "+91 7041169494",
+    instagramUrl: raw.instagramUrl || "",
+    youtubeUrl: raw.youtubeUrl || "",
+    telegramUrl: raw.telegramUrl || "",
+    whatsappUrl: raw.whatsappUrl || "",
+    aboutText: raw.aboutText || "",
+    heroTitle: raw.heroTitle || "Learn Smart. Revise Fast.",
+    heroSubtitle: raw.heroSubtitle || "Crack Exams.",
+    upiId: raw.upiId || "",
+  };
+}
+
+export type { ProductCardData, CategoryNav, Product, Category, Order, Customer, Settings };
