@@ -14,6 +14,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// Account page must be dynamic — it uses customer session
+export const dynamic = "force-dynamic";
+
 const STATUS_STYLE: Record<string, string> = {
   PAID: "bg-brand-100 text-brand-800",
   PENDING: "bg-amber-100 text-amber-800",

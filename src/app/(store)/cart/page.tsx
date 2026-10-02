@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// Cart must be dynamic — it reads from localStorage on the client
+export const dynamic = "force-dynamic";
+
 export default function CartPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">

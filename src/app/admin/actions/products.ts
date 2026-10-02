@@ -1,6 +1,6 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
@@ -9,6 +9,7 @@ import { uniqueSlug } from "./auth";
 import { buildStorageKey, deleteFile, putFile } from "@/lib/storage";
 import type { StorageDriver } from "@/lib/storage";
 import { PRODUCT_TYPES } from "@/lib/constants";
+import { CACHE_TAGS } from "@/lib/queries";
 
 export type ProductFormState = {
   ok: boolean;
@@ -209,6 +210,8 @@ export async function createProductAction(
   revalidatePath("/admin/products");
   revalidatePath("/products");
   revalidatePath("/");
+  revalidateTag(CACHE_TAGS.products);
+  revalidateTag(CACHE_TAGS.categories);
 
   const detail = errors.length
     ? `Saved, but ${errors.length} file(s) were skipped: ${errors[0]}`
@@ -304,6 +307,9 @@ export async function updateProductAction(
   revalidatePath(`/products/${slug}`);
   revalidatePath("/products");
   revalidatePath("/");
+  revalidateTag(CACHE_TAGS.products);
+  revalidateTag(CACHE_TAGS.categories);
+  revalidateTag(CACHE_TAGS.product(slug));
 
   return {
     ok: true,
@@ -332,6 +338,8 @@ export async function deleteProductAction(formData: FormData) {
   revalidatePath("/admin/products");
   revalidatePath("/products");
   revalidatePath("/");
+  revalidateTag(CACHE_TAGS.products);
+  revalidateTag(CACHE_TAGS.categories);
 }
 
 export async function toggleProductActiveAction(formData: FormData) {
@@ -348,6 +356,8 @@ export async function toggleProductActiveAction(formData: FormData) {
 
   revalidatePath("/admin/products");
   revalidatePath("/products");
+  revalidateTag(CACHE_TAGS.products);
+  revalidateTag(CACHE_TAGS.categories);
 }
 
 export async function deleteProductFileAction(formData: FormData) {
@@ -364,6 +374,7 @@ export async function deleteProductFileAction(formData: FormData) {
   await prisma.productFile.delete({ where: { id: fileId } });
 
   revalidatePath("/admin/products");
+  revalidateTag(CACHE_TAGS.products);
 }
 
 export async function renameProductFileAction(formData: FormData) {
@@ -380,6 +391,7 @@ export async function renameProductFileAction(formData: FormData) {
   });
 
   revalidatePath("/admin/products");
+  revalidateTag(CACHE_TAGS.products);
 }
 
 export async function reorderProductFilesAction(formData: FormData) {
@@ -401,4 +413,5 @@ export async function reorderProductFilesAction(formData: FormData) {
   );
 
   revalidatePath(`/admin/products/${productId}`);
+  revalidateTag(CACHE_TAGS.products);
 }

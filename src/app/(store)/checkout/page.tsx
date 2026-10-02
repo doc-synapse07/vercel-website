@@ -10,6 +10,9 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+// Checkout must be dynamic — it uses localStorage cart + customer session
+export const dynamic = "force-dynamic";
+
 const PROVIDER_COPY: Record<string, { label: string; description: string }> = {
   razorpay: {
     label: "Razorpay",

@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import { unstable_cache } from "next/cache";
 import type { ProductCardData, CategoryNav } from "./types";
 
 /** Maps a Prisma product row (with category + file count) to the card view model. */
@@ -50,24 +51,43 @@ const CARD_SELECT = {
   _count: { select: { files: true } },
 } as const;
 
-export async function getCategories(): Promise<CategoryNav[]> {
-  const rows = await prisma.category.findMany({
-    where: { isActive: true },
-    orderBy: { sortOrder: "asc" },
-    select: {
-      name: true,
-      slug: true,
-      _count: { select: { products: { where: { isActive: true } } } },
-    },
-  });
-  return rows.map((r) => ({ name: r.name, slug: r.slug, productCount: r._count.products }));
-}
+// Cache tags for revalidation
+export const CACHE_TAGS = {
+  products: "products",
+  categories: "categories",
+  product: (slug: string) => `product:${slug}`,
+  category: (slug: string) => `category:${slug}`,
+} as const;
+
+// Cached queries with tags
+export const getCategories = unstable_cache(
+  async (): Promise<CategoryNav[]> => {
+    const rows = await prisma.category.findMany({
+      where: { isActive: true },
+      orderBy: { sortOrder: "asc" },
+      select: {
+        name: true,
+        slug: true,
+        _count: { select: { products: { where: { isActive: true } } } },
+      },
+    });
+    return rows.map((r) => ({ name: r.name, slug: r.slug, productCount: r._count.products }));
+  },
+  ["categories"],
+  { tags: [CACHE_TAGS.categories], revalidate: 3600 }
+);
 
 export async function getCategoryBySlug(slug: string) {
-  return prisma.category.findUnique({
-    where: { slug },
-    select: { id: true, name: true, slug: true, description: true },
-  });
+  return unstable_cache(
+    async () => {
+      return prisma.category.findUnique({
+        where: { slug },
+        select: { id: true, name: true, slug: true, description: true },
+      });
+    },
+    [slug],
+    { tags: [CACHE_TAGS.category(slug)], revalidate: 3600 }
+  )();
 }
 
 export type ProductListOptions = {
@@ -117,13 +137,36 @@ export async function getProducts(opts: ProductListOptions = {}) {
 }
 
 export async function getProductBySlug(slug: string) {
-  return prisma.product.findFirst({
-    where: { slug, isActive: true },
-    include: {
-      category: { select: { name: true, slug: true } },
-      files: { orderBy: { sortOrder: "asc" }, select: { id: true, fileName: true, sizeBytes: true } },
+  return unstable_cache(
+    async () => {
+      return prisma.product.findFirst({
+        where: { slug, isActive: true },
+        include: {
+          category: { select: { name: true, slug: true } },
+          files: { orderBy: { sortOrder: "asc" }, select: { id: true, fileName: true, sizeBytes: true } },
+        },
+      });
     },
-  });
+    [slug],
+    { tags: [CACHE_TAGS.product(slug)], revalidate: 3600 }
+  )();
+}
+
+/** Products sorted by popularity (featured first, then newest) */
+export async function getPopularProducts(take = 4): Promise<ProductCardData[]> {
+  return unstable_cache(
+    async () => {
+      const rows = await prisma.product.findMany({
+        where: { isActive: true },
+        orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+        select: CARD_SELECT,
+        take,
+      });
+      return rows.map(toCardData);
+    },
+    [`popular-${take}`],
+    { tags: [CACHE_TAGS.products], revalidate: 3600 }
+  )();
 }
 
 export async function getRelatedProducts(
@@ -131,13 +174,19 @@ export async function getRelatedProducts(
   categoryId: string,
   take = 4,
 ): Promise<ProductCardData[]> {
-  const rows = await prisma.product.findMany({
-    where: { isActive: true, categoryId, id: { not: productId } },
-    orderBy: { createdAt: "desc" },
-    select: CARD_SELECT,
-    take,
-  });
-  return rows.map(toCardData);
+  return unstable_cache(
+    async () => {
+      const rows = await prisma.product.findMany({
+        where: { isActive: true, categoryId, id: { not: productId } },
+        orderBy: { createdAt: "desc" },
+        select: CARD_SELECT,
+        take,
+      });
+      return rows.map(toCardData);
+    },
+    [`related-${productId}-${take}`],
+    { tags: [CACHE_TAGS.products], revalidate: 3600 }
+  )();
 }
 
 export async function getStoreStats() {

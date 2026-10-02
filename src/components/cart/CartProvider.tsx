@@ -64,17 +64,24 @@ function readStoredCart(): CartLine[] {
   }
 }
 
-export function CartProvider({ children }: { children: ReactNode }) {
-  const [lines, setLines] = useState<CartLine[]>([]);
-  const [ready, setReady] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+// Initialize cart state synchronously to avoid hydration flash
+function getInitialCart(): CartLine[] {
+  if (typeof window === "undefined") return [];
+  return readStoredCart();
+}
 
-  // Hydrate after mount so server and client markup match on first paint.
+export function CartProvider({ children }: { children: ReactNode }) {
+  // Initialize from localStorage immediately (synchronous) to avoid hydration flash
+  const [lines, setLines] = useState<CartLine[]>(getInitialCart);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [ready, setReady] = useState(false);
+
+  // Mark ready after first render (client-side)
   useEffect(() => {
-    setLines(readStoredCart());
     setReady(true);
   }, []);
 
+  // Sync to localStorage on changes
   useEffect(() => {
     if (!ready) return;
     try {
@@ -142,7 +149,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       count,
       subtotalPaise,
       mrpTotalPaise,
-      ready,
+      ready: true,
       addItem,
       removeItem,
       setQuantity,
@@ -152,7 +159,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       closeDrawer: () => setDrawerOpen(false),
       drawerOpen,
     };
-  }, [lines, ready, addItem, removeItem, setQuantity, clear, has, drawerOpen]);
+  }, [lines, addItem, removeItem, setQuantity, clear, has, drawerOpen]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
