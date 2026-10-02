@@ -30,14 +30,6 @@ export const metadata: Metadata = {
 };
 
 /**
- * Prices, featured products and store settings are all edited from the admin
- * panel, so every storefront page has to be rendered per request. Without this
- * Next prerenders the pages at build time and an admin edit stays invisible
- * until the site is redeployed — customers would see stale prices.
- */
-export const dynamic = "force-dynamic";
-
-/**
  * Storefront chrome lives in this layout, not the root one, so that /admin
  * renders its own header and footer-free shell instead of the shop's.
  */

@@ -126,42 +126,6 @@ export async function getProductBySlug(slug: string) {
   });
 }
 
-export async function getFeaturedProducts(take = 8): Promise<ProductCardData[]> {
-  const rows = await prisma.product.findMany({
-    where: { isActive: true, isFeatured: true },
-    orderBy: { createdAt: "desc" },
-    select: CARD_SELECT,
-    take,
-  });
-  return rows.map(toCardData);
-}
-
-/** Products sorted by popularity (featured first, then newest) */
-export async function getPopularProducts(take = 4): Promise<ProductCardData[]> {
-  const rows = await prisma.product.findMany({
-    where: { isActive: true },
-    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-    select: CARD_SELECT,
-    take,
-  });
-  return rows.map(toCardData);
-}
-
-/**
- * Products a customer can actually buy right now — a PDF is attached.
- * The homepage featured row uses this so it never advertises a "Coming soon"
- * card as the face of the store. Hides itself when nothing is ready.
- */
-export async function getReadyProducts(take = 4): Promise<ProductCardData[]> {
-  const rows = await prisma.product.findMany({
-    where: { isActive: true, files: { some: {} } },
-    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-    select: CARD_SELECT,
-    take,
-  });
-  return rows.map(toCardData);
-}
-
 export async function getRelatedProducts(
   productId: string,
   categoryId: string,
@@ -174,14 +138,6 @@ export async function getRelatedProducts(
     take,
   });
   return rows.map(toCardData);
-}
-
-export async function getActiveCouponCodes(): Promise<string[]> {
-  const rows = await prisma.coupon.findMany({
-    where: { isActive: true },
-    select: { code: true },
-  });
-  return rows.map((r) => r.code);
 }
 
 export async function getStoreStats() {
