@@ -418,6 +418,33 @@ export async function setSetting(key: string, value: string): Promise<void> {
 
 // ==================== UTILITIES ====================
 
+export async function getStoreStats() {
+  const sql = getPg();
+  if (!sql) {
+    const products = await getProducts();
+    const categories = await getCategories();
+    const orders = await getOrders();
+    const customers = await getCustomers();
+    const downloads = orders.reduce((sum, o) => sum + o.items.filter(i => i.kind === "DIGITAL").length, 0);
+    return { products: products.length, categories: categories.length, freeProducts: products.filter(p => p.isFree).length, customers: customers.length, downloads };
+  }
+  await ensureSchema(sql);
+  const [productCount, categoryCount, freeProductCount, customerCount, downloadCount] = await Promise.all([
+    sql`SELECT count(*)::int as c FROM s_products WHERE (data->>'isActive')::boolean = true`,
+    sql`SELECT count(*)::int as c FROM s_categories`,
+    sql`SELECT count(*)::int as c FROM s_products WHERE (data->>'isFree')::boolean = true`,
+    sql`SELECT count(*)::int as c FROM s_customers`,
+    sql`SELECT COALESCE(SUM((item->>'quantity')::int), 0)::int as c FROM s_orders, jsonb_array_elements((data->>'items')::jsonb) as item WHERE (data->>'status')::text = 'paid'`,
+  ]);
+  return {
+    products: productCount[0]?.c || 0,
+    categories: categoryCount[0]?.c || 0,
+    freeProducts: freeProductCount[0]?.c || 0,
+    customers: customerCount[0]?.c || 0,
+    downloads: downloadCount[0]?.c || 0,
+  };
+}
+
 export function newId(prefix: string) {
   return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 }

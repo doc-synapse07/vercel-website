@@ -4,6 +4,7 @@ import {
   getPublishedProducts,
   getProductBySlug as getProductBySlugRaw,
   getFeaturedProducts as getFeaturedProductsRaw,
+  getPopularProducts as getPopularProductsRaw,
   getRelatedProducts as getRelatedProductsRaw,
   getProductsByCategory as getProductsByCategoryRaw,
   getCategories as getCategoriesRaw,
@@ -47,6 +48,21 @@ export const CACHE_TAGS = {
   categories: "categories",
   product: (slug: string) => `product:${slug}`,
   category: (slug: string) => `category:${slug}`,
+} as const;
+
+const CARD_SELECT = {
+  id: true,
+  slug: true,
+  title: true,
+  shortDescription: true,
+  pricePaise: true,
+  mrpPaise: true,
+  coverImage: true,
+  productType: true,
+  isFree: true,
+  isFeatured: true,
+  category: { select: { name: true, slug: true } },
+  _count: { select: { files: true } },
 } as const;
 
 // Cached queries with tags
@@ -136,19 +152,8 @@ export async function getFeaturedProducts(take = 8): Promise<ProductCardData[]> 
 
 /** Products sorted by popularity (featured first, then newest) */
 export async function getPopularProducts(take = 4): Promise<ProductCardData[]> {
-  return unstable_cache(
-    async () => {
-      const rows = await prisma.product.findMany({
-        where: { isActive: true },
-        orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-        select: CARD_SELECT,
-        take,
-      });
-      return rows.map(toCardData);
-    },
-    [`popular-${take}`],
-    { tags: [CACHE_TAGS.products], revalidate: 3600 }
-  )();
+  const items = await getPopularProductsRaw(take);
+  return items.map(toCardData);
 }
 
 export async function getProductsByCategory(categorySlug: string): Promise<ProductCardData[]> {

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useActionState, useState } from "react";
+import { useActionState, useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   Loader2,
@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   Info,
+  Plus,
 } from "lucide-react";
 import {
   createProductAction,
@@ -20,6 +21,7 @@ import {
   type ProductFormState,
 } from "@/app/admin/actions/products";
 import { formatBytes } from "@/lib/utils";
+import { VariantManager } from "@/components/VariantManager";
 
 export type CategoryOption = { id: string; name: string };
 
@@ -40,6 +42,7 @@ export type ProductFormValues = {
   weightGrams: number | null;
   coverImage: string | null;
   files: { id: string; fileName: string; sizeBytes: number }[];
+  variants?: { id: string; label: string; pricePaise: number; inStock: boolean }[];
 };
 
 const initialState: ProductFormState = { ok: false };
@@ -270,6 +273,14 @@ export function ProductForm({
         </div>
       </section>
 
+      {/* ------------------------------------------------------------ variants */}
+      {productType === "PHYSICAL" && (
+        <VariantManager
+          initialVariants={product?.variants ?? []}
+          productType={productType}
+        />
+      )}
+
       {/* -------------------------------------------------------------- cover */}
       <section className="rounded-card border border-ink-200 bg-white p-5">
         <h2 className="mb-1 text-base font-semibold text-ink-900">Cover image</h2>
@@ -339,18 +350,12 @@ export function ProductForm({
 
               <ul className="flex flex-col gap-2">
                 {product.files.map((f) => (
-                  <li
-                    key={f.id}
-                    className="flex items-center gap-3 rounded-lg border border-ink-200 px-3 py-2.5"
-                  >
+                  <li key={f.id} className="flex items-center gap-3 rounded-lg border border-ink-200 px-3 py-2.5">
                     <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-50 text-brand-700">
                       <FileText size={15} />
                     </span>
 
-                    <form
-                      action={deleteProductFileAction}
-                      className="flex min-w-0 flex-1 items-center gap-2"
-                    >
+                    <form action={deleteProductFileAction} className="flex min-w-0 flex-1 items-center gap-2">
                       <input type="hidden" name="fileId" value={f.id} />
                       <input
                         name="fileName"
@@ -360,11 +365,7 @@ export function ProductForm({
                         aria-label="File name"
                       />
                       <span className="shrink-0 text-xs text-ink-400">{formatBytes(f.sizeBytes)}</span>
-                      <button
-                        type="submit"
-                        title="Delete this file"
-                        className="shrink-0 rounded-md p-1.5 text-ink-500 hover:bg-red-50 hover:text-red-600"
-                      >
+                      <button type="submit" title="Delete this file" className="shrink-0 rounded-md p-1.5 text-ink-500 hover:bg-red-50 hover:text-red-600">
                         <Trash2 size={15} />
                       </button>
                     </form>
@@ -377,8 +378,7 @@ export function ProductForm({
           {isEdit && product && product.files.length > 0 && !replaceFiles && (
             <p className="mb-3 flex items-start gap-2 rounded-lg bg-ink-50 px-3 py-2.5 text-xs text-ink-600">
               <Info size={14} className="mt-0.5 shrink-0" />
-              New files will be added to the existing bundle. Tick &ldquo;delete existing and
-              replace&rdquo; to start over.
+              New files will be added to the existing bundle. Tick &ldquo;delete existing and replace&rdquo; to start over.
             </p>
           )}
 
@@ -401,27 +401,17 @@ export function ProductForm({
 
       {/* ------------------------------------------------------------ actions */}
       <div className="flex flex-wrap items-center gap-3">
-        <button
-          type="submit"
-          disabled={pending}
-          className="btn btn-primary btn-md"
-        >
+        <button type="submit" disabled={pending} className="btn btn-primary btn-md">
           {pending ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
           {pending ? "Saving…" : isEdit ? "Save changes" : "Create product"}
         </button>
 
-        <Link
-          href="/admin/products"
-          className="btn btn-outline btn-md"
-        >
+        <Link href="/admin/products" className="btn btn-outline btn-md">
           Cancel
         </Link>
 
         {isEdit && product?.slug && (
-          <Link
-            href={`/products/${product.slug}`}
-            className="ml-auto text-sm font-medium text-brand-700 hover:underline"
-          >
+          <Link href={`/products/${product.slug}`} className="ml-auto text-sm font-medium text-brand-700 hover:underline">
             View on store →
           </Link>
         )}

@@ -39,7 +39,7 @@ export default async function ProductPage({ params }: Params) {
   if (!product) notFound();
 
   const [related, settings] = await Promise.all([
-    getRelatedProducts(product.id, product.categoryId, 4),
+    getRelatedProducts(product.id, product.categorySlug, 4),
     getSettings(),
   ]);
 
