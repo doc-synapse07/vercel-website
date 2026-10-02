@@ -107,7 +107,6 @@ export async function getProducts(opts: ProductListOptions = {}) {
 
   const search = opts.search?.trim();
   if (search) {
-    // SQLite `contains` is case-insensitive for ASCII, which is fine here.
     where.OR = [
       { title: { contains: search } },
       { shortDescription: { contains: search } },
@@ -152,21 +151,40 @@ export async function getProductBySlug(slug: string) {
   )();
 }
 
+export async function getFeaturedProducts(take = 8): Promise<ProductCardData[]> {
+  const rows = await prisma.product.findMany({
+    where: { isActive: true, isFeatured: true },
+    orderBy: { createdAt: "desc" },
+    select: CARD_SELECT,
+    take,
+  });
+  return rows.map(toCardData);
+}
+
 /** Products sorted by popularity (featured first, then newest) */
 export async function getPopularProducts(take = 4): Promise<ProductCardData[]> {
-  return unstable_cache(
-    async () => {
-      const rows = await prisma.product.findMany({
-        where: { isActive: true },
-        orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-        select: CARD_SELECT,
-        take,
-      });
-      return rows.map(toCardData);
-    },
-    [`popular-${take}`],
-    { tags: [CACHE_TAGS.products], revalidate: 3600 }
-  )();
+  const rows = await prisma.product.findMany({
+    where: { isActive: true },
+    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+    select: CARD_SELECT,
+    take,
+  });
+  return rows.map(toCardData);
+}
+
+/**
+ * Products a customer can actually buy right now — a PDF is attached.
+ * The homepage featured row uses this so it never advertises a "Coming soon"
+ * card as the face of the store. Hides itself when nothing is ready.
+ */
+export async function getReadyProducts(take = 4): Promise<ProductCardData[]> {
+  const rows = await prisma.product.findMany({
+    where: { isActive: true, files: { some: {} } },
+    orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+    select: CARD_SELECT,
+    take,
+  });
+  return rows.map(toCardData);
 }
 
 export async function getRelatedProducts(
@@ -174,19 +192,21 @@ export async function getRelatedProducts(
   categoryId: string,
   take = 4,
 ): Promise<ProductCardData[]> {
-  return unstable_cache(
-    async () => {
-      const rows = await prisma.product.findMany({
-        where: { isActive: true, categoryId, id: { not: productId } },
-        orderBy: { createdAt: "desc" },
-        select: CARD_SELECT,
-        take,
-      });
-      return rows.map(toCardData);
-    },
-    [`related-${productId}-${take}`],
-    { tags: [CACHE_TAGS.products], revalidate: 3600 }
-  )();
+  const rows = await prisma.product.findMany({
+    where: { isActive: true, categoryId, id: { not: productId } },
+    orderBy: { createdAt: "desc" },
+    select: CARD_SELECT,
+    take,
+  });
+  return rows.map(toCardData);
+}
+
+export async function getActiveCouponCodes(): Promise<string[]> {
+  const rows = await prisma.coupon.findMany({
+    where: { isActive: true },
+    select: { code: true },
+  });
+  return rows.map((r) => r.code);
 }
 
 export async function getStoreStats() {

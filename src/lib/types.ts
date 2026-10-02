@@ -9,6 +9,10 @@ export type CartProduct = {
   coverImage: string | null;
   productType: string;
   isFree: boolean;
+  kind?: ProductKind;
+  variants?: ProductVariant[];
+  categorySlug?: string;
+  originalPrice?: number;
 };
 
 export type CategoryNav = {
@@ -73,5 +77,164 @@ export type CouponRow = {
   usedCount: number;
   startsAt: Date | null;
   expiresAt: Date | null;
+  isActive: boolean;
+};
+
+// Fusion patterns: Additional types for new features (don't break existing)
+export type ProductKind = "DIGITAL" | "PHYSICAL";
+
+export type ProductVariant = {
+  id: string;
+  label: string;
+  pricePaise: number;
+  inStock: boolean;
+};
+
+export type ProductFile = {
+  id: string;
+  fileName: string;
+  sizeBytes: number;
+  sortOrder: number;
+};
+
+export type CartItem = {
+  key: string;
+  id: string;
+  name: string;
+  pricePaise: number;
+  mrpPaise: number | null;
+  image: string | null;
+  qty: number;
+  kind?: ProductKind;
+  variantId?: string;
+  variantLabel?: string;
+  customization?: string;
+  
+  // Backward compat
+  productId: string;
+  slug: string;
+  title: string;
+  coverImage: string | null;
+  productType: string;
+  isFree: boolean;
+  quantity: number;
+  price: number;
+  originalPrice?: number;
+};
+
+export type Settings = {
+  siteName: string;
+  siteTagline: string;
+  supportEmail: string;
+  supportPhone: string;
+  instagramUrl: string;
+  youtubeUrl: string;
+  telegramUrl: string;
+  whatsappUrl: string;
+  aboutText: string;
+  heroTitle: string;
+  heroSubtitle: string;
+  upiId: string;
+};
+
+// Re-export Prisma-compatible types for server-side use
+export type Product = {
+  id: string;
+  slug: string;
+  title: string;
+  shortDescription: string | null;
+  description: string | null;
+  pricePaise: number;
+  mrpPaise: number | null;
+  coverImage: string | null;
+  productType: string;
+  kind: ProductKind;
+  variants: ProductVariant[];
+  files: ProductFile[];
+  categorySlug: string;
+  isActive: boolean;
+  isFeatured: boolean;
+  inStock: boolean;
+  isFree: boolean;
+};
+
+export type Category = {
+  name: string;
+  slug: string;
+  description: string | null;
+  sortOrder: number;
+  isActive: boolean;
+};
+
+export type OrderItem = {
+  id: string;
+  name: string;
+  pricePaise: number;
+  mrpPaise: number | null;
+  productType: string;
+  quantity: number;
+  kind?: ProductKind;
+  variant?: string;
+  customization?: string;
+  fileName?: string;
+  downloadUrl?: string;
+  expiresAt?: number;
+};
+
+export type Order = {
+  id: string;
+  orderNumber: string;
+  status: "pending" | "paid" | "failed" | "refunded";
+  items: OrderItem[];
+  subtotalPaise: number;
+  discountPaise: number;
+  shippingPaise: number;
+  totalPaise: number;
+  total: number;
+  contact: {
+    name: string;
+    email: string;
+    phone: string;
+  };
+  shippingAddress?: {
+    line: string;
+    city: string;
+    state: string;
+    pincode: string;
+    country: string;
+  };
+  courier?: string;
+  trackingNumber?: string;
+  paymentProvider?: string;
+  paymentOrderId?: string;
+  paymentRefId?: string;
+  paymentSignature?: string;
+  paidAt?: string;
+  createdAt: string;
+  shipping?: number;
+};
+
+export type Customer = {
+  id: string;
+  name: string;
+  email: string;
+  googleId?: string;
+  passwordHash?: string;
+  createdAt: string;
+};
+
+export type Coupon = {
+  id: string;
+  code: string;
+  description: string | null;
+  discountType: "percent" | "flat";
+  discountValue: number;
+  minOrderValue?: number;
+  maxDiscount?: number;
+  usageLimit?: number;
+  perUserLimit?: number;
+  usedCount: number;
+  startsAt?: string;
+  expiresAt?: string;
   isActive: boolean;
 };

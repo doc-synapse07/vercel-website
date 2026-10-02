@@ -1,39 +1,56 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import type { CartProduct } from "@/lib/types";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import type { CartItem, CartProduct, ProductKind } from "@/lib/types";
+import { formatINR } from "@/lib/utils";
 
-export type CartLine = {
-  productId: string;
-  slug: string;
-  title: string;
-  pricePaise: number;
-  mrpPaise: number | null;
-  coverImage: string | null;
-  productType: string;
-  isFree: boolean;
-  quantity: number;
-};
+const CART_KEY = "sj7-cart-v1";
+
+function cartKey(customerId: string | null) {
+  return customerId ? `${CART_KEY}:${customerId}` : CART_KEY;
+}
+
+function cartLineKey(id: string, variantId?: string | null, customization?: string | null): string {
+  let key = variantId ? `${id}::${variantId}` : id;
+  const custom = (customization || "").trim().toLowerCase();
+  if (custom) key += `::${custom}`;
+  return key;
+}
+
+function mergeCarts(a: CartItem[], b: CartItem[]): CartItem[] {
+  const map = new Map<string, CartItem>();
+  for (const item of a) map.set(item.key ?? item.id, { ...item, key: item.key ?? item.id });
+  for (const item of b) {
+    const key = item.key ?? item.id;
+    const existing = map.get(key);
+    if (existing) {
+      const merged = { ...existing, ...item, key, qty: existing.qty + item.qty };
+      if (merged.kind === "DIGITAL") merged.qty = 1;
+      map.set(key, merged);
+    } else {
+      map.set(key, { ...item, key });
+    }
+  }
+  return [...map.values()];
+}
 
 type CartContextValue = {
-  lines: CartLine[];
+  items: CartItem[];
+  // Backward compatibility
+  lines: CartItem[];
   count: number;
+  subtotal: number;
   subtotalPaise: number;
   mrpTotalPaise: number;
   ready: boolean;
-  addItem: (product: CartProduct, quantity?: number) => void;
+  add: (product: CartProduct, qty?: number, variantId?: string, customization?: string) => void;
+  addItem: (product: CartProduct, qty?: number, variantId?: string, customization?: string) => void;
+  setQty: (key: string, qty: number) => void;
+  setQuantity: (productId: string, qty: number) => void;
+  remove: (key: string) => void;
   removeItem: (productId: string) => void;
-  setQuantity: (productId: string, quantity: number) => void;
   clear: () => void;
-  has: (productId: string) => boolean;
+  has: (productId: string, variantId?: string) => boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
   drawerOpen: boolean;
@@ -41,131 +58,168 @@ type CartContextValue = {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
-const STORAGE_KEY = "sj7_cart_v1";
-
-function readStoredCart(): CartLine[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    // Validate shape — a tampered or stale entry must not crash the storefront.
-    return parsed.filter(
-      (l): l is CartLine =>
-        typeof l === "object" &&
-        l !== null &&
-        typeof (l as CartLine).productId === "string" &&
-        typeof (l as CartLine).pricePaise === "number" &&
-        typeof (l as CartLine).title === "string",
-    );
-  } catch {
-    return [];
-  }
-}
-
-// Initialize cart state synchronously to avoid hydration flash
-function getInitialCart(): CartLine[] {
-  if (typeof window === "undefined") return [];
-  return readStoredCart();
-}
-
-export function CartProvider({ children }: { children: ReactNode }) {
-  // Initialize from localStorage immediately (synchronous) to avoid hydration flash
-  const [lines, setLines] = useState<CartLine[]>(getInitialCart);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+export function CartProvider({
+  customerId = null,
+  children,
+}: {
+  customerId?: string | null;
+  children: React.ReactNode;
+}) {
+  const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
+  const [prevId, setPrevId] = useState<string | null>(customerId);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Mark ready after first render (client-side)
+  // Handle customerId changes (login/logout/switch)
+  if (prevId !== customerId && typeof window !== "undefined") {
+    let next: CartItem[] = [];
+    try {
+      if (prevId === null && customerId) {
+        // Guest -> Account: merge guest cart into account cart
+        const guestRaw = localStorage.getItem(CART_KEY);
+        const accountRaw = localStorage.getItem(cartKey(customerId));
+        next = mergeCarts(
+          guestRaw ? JSON.parse(guestRaw) : [],
+          accountRaw ? JSON.parse(accountRaw) : []
+        );
+        localStorage.removeItem(CART_KEY);
+      } else if (prevId && customerId === null) {
+        // Account -> Guest: clear cart
+        next = [];
+      } else if (prevId && customerId && prevId !== customerId) {
+        // Account switch: load new account cart
+        const accountRaw = localStorage.getItem(cartKey(customerId));
+        next = accountRaw ? JSON.parse(accountRaw) : [];
+      }
+    } catch {}
+    setPrevId(customerId);
+    setItems(next);
+  }
+
+  // Initial load (deferred to avoid hydration mismatch)
   useEffect(() => {
-    setReady(true);
+    const timer = setTimeout(() => {
+      try {
+        const raw = localStorage.getItem(cartKey(customerId));
+        if (raw) setItems(JSON.parse(raw));
+      } catch {}
+      setReady(true);
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync to localStorage on changes
+  // Persist on changes
   useEffect(() => {
     if (!ready) return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(lines));
-    } catch {
-      // Private browsing / quota — cart simply won't persist across reloads.
-    }
-  }, [lines, ready]);
-
-  const addItem = useCallback((product: CartProduct, quantity = 1) => {
-    setLines((prev) => {
-      const existing = prev.find((l) => l.productId === product.id);
-      if (existing) {
-        return prev.map((l) =>
-          l.productId === product.id ? { ...l, quantity: l.quantity + quantity } : l,
-        );
-      }
-      return [
-        ...prev,
-        {
-          productId: product.id,
-          slug: product.slug,
-          title: product.title,
-          pricePaise: product.isFree ? 0 : product.pricePaise,
-          mrpPaise: product.mrpPaise,
-          coverImage: product.coverImage,
-          productType: product.productType,
-          isFree: Boolean(product.isFree),
-          quantity,
-        },
-      ];
-    });
-    setDrawerOpen(true);
-  }, []);
-
-  const removeItem = useCallback((productId: string) => {
-    setLines((prev) => prev.filter((l) => l.productId !== productId));
-  }, []);
-
-  const setQuantity = useCallback((productId: string, quantity: number) => {
-    setLines((prev) =>
-      prev.flatMap((l) => {
-        if (l.productId !== productId) return [l];
-        const next = Math.max(1, Math.min(99, Math.floor(quantity || 1)));
-        return [{ ...l, quantity: next }];
-      }),
-    );
-  }, []);
-
-  const clear = useCallback(() => setLines([]), []);
-  const has = useCallback(
-    (productId: string) => lines.some((l) => l.productId === productId),
-    [lines],
-  );
+      localStorage.setItem(cartKey(customerId), JSON.stringify(items));
+    } catch {}
+  }, [items, ready, customerId]);
 
   const value = useMemo<CartContextValue>(() => {
-    const count = lines.reduce((sum, l) => sum + l.quantity, 0);
-    const subtotalPaise = lines.reduce((sum, l) => sum + l.pricePaise * l.quantity, 0);
-    const mrpTotalPaise = lines.reduce(
-      (sum, l) => sum + (l.mrpPaise ?? l.pricePaise) * l.quantity,
-      0,
-    );
+    const add = (product: CartProduct, qty = 1, variantId?: string, customization?: string) => {
+      const isDigital = product.kind === "DIGITAL";
+      if (isDigital && !product.isFree) return; // Free digital handled separately
+      const variant = variantId
+        ? (product.variants || []).find((v) => v.id === variantId)
+        : undefined;
+      const cleanCustomization = customization?.trim().slice(0, 500) || undefined;
+      const key = cartLineKey(product.id, variant?.id, cleanCustomization);
+      const variantPrice = variant ? variant.pricePaise : product.pricePaise;
+      const productPrice = product.pricePaise;
+      setItems((prev) => {
+        const found = prev.find((i) => (i.key ?? i.id) === key);
+        if (found) {
+          if (isDigital) return prev; // Digital: qty stays 1
+          return prev.map((i) =>
+            (i.key ?? i.id) === key
+              ? { ...i, qty: i.qty + qty, pricePaise: variant ? variant.pricePaise : i.pricePaise }
+              : i
+          );
+        }
+        return [
+          ...prev,
+          {
+            key,
+            id: product.id,
+            productId: product.id,
+            name: product.title,
+            title: product.title,
+            pricePaise: variant ? variant.pricePaise : productPrice,
+            mrpPaise: variant ? variant.pricePaise : product.mrpPaise,
+            price: variant ? variant.pricePaise : productPrice,
+            image: product.coverImage,
+            coverImage: product.coverImage,
+            slug: product.slug,
+            kind: product.kind,
+            productType: product.productType,
+            variantId: variant?.id,
+            variantLabel: variant?.label,
+            customization: cleanCustomization,
+            qty: isDigital ? 1 : qty,
+            quantity: isDigital ? 1 : qty,
+            isFree: product.isFree,
+            originalPrice: product.originalPrice,
+          },
+        ];
+      });
+      setDrawerOpen(true);
+    };
+
+    const setQty = (key: string, qty: number) => {
+      setItems((prev) =>
+        prev
+          .map((i) => {
+            if ((i.key ?? i.id) !== key) return i;
+            const capped = i.kind === "DIGITAL" ? 1 : qty;
+            return { ...i, qty: capped };
+          })
+          .filter((i) => i.qty > 0)
+      );
+    };
+
+    const remove = (key: string) => setItems((prev) => prev.filter((i) => (i.key ?? i.id) !== key));
+    const clear = () => setItems([]);
+    const has = (productId: string, variantId?: string) =>
+      items.some((i) => i.id === productId && (variantId ? i.variantId === variantId : !i.variantId));
+    const count = items.reduce((n, i) => n + i.qty, 0);
+    const subtotal = items.reduce((n, i) => n + i.pricePaise * i.qty, 0);
+    const mrpTotal = items.reduce((n, i) => n + (i.mrpPaise ?? i.pricePaise) * i.qty, 0);
+
     return {
-      lines,
+      items,
+      lines: items,
       count,
-      subtotalPaise,
-      mrpTotalPaise,
+      subtotal,
+      subtotalPaise: subtotal,
+      mrpTotalPaise: mrpTotal,
       ready: true,
-      addItem,
-      removeItem,
-      setQuantity,
+      add,
+      addItem: add,
+      setQty,
+      setQuantity: (productId: string, qty: number) => {
+        const item = items.find((i) => i.id === productId);
+        if (item) setQty(item.key ?? item.id, qty);
+      },
+      remove,
+      removeItem: (productId: string) => {
+        const item = items.find((i) => i.id === productId);
+        if (item) remove(item.key ?? item.id);
+      },
       clear,
       has,
       openDrawer: () => setDrawerOpen(true),
       closeDrawer: () => setDrawerOpen(false),
       drawerOpen,
     };
-  }, [lines, addItem, removeItem, setQuantity, clear, has, drawerOpen]);
+  }, [items, ready, customerId]);
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
-export function useCart(): CartContextValue {
+export function useCart() {
   const ctx = useContext(CartContext);
-  if (!ctx) throw new Error("useCart must be used inside <CartProvider>");
+  if (!ctx) throw new Error("useCart must be used inside CartProvider");
   return ctx;
 }
