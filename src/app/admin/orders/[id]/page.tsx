@@ -32,7 +32,6 @@ const STATUS_COPY: Record<string, string> = {
   PENDING: "Payment pending",
   PAID: "Paid",
   FAILED: "Failed",
-  REFUNDED: "Refunded",
 };
 
 export default async function AdminOrderDetailPage({

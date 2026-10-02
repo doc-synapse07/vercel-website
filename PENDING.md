@@ -3,12 +3,12 @@
 | Priority | Feature | Effort | Status |
 |----------|---------|--------|--------|
 | **High** | **Stripe-only payments** (remove Cashfree/Razorpay/Mock) | Low | ❌ Not started |
-| **High** | **Digital download enforcement** (24h expiry, 3 downloads limit) | Low | ❌ Partial |
-| **Medium** | **Order status emails** (paid/failed/refunded) | Low | ✅ Templates ready, not hooked |
+| **High** | **Digital download enforcement** (24h expiry, 3 downloads limit) | Low | ✅ **Done** - Already enforced in `/api/download/[token]` |
+| **Medium** | **Order status emails** (shipped/packed/refunded) | Low | ✅ **Done** - Hooked in `updateOrderStatusAction` |
 | **Medium** | **Coupon validation edge cases** (per-user, expiry, caps) | Low | ✅ Working |
 | **Medium** | **Admin order management** (status changes, refunds) | Low | ✅ Working |
-| **Low** | **Vercel Analytics + Speed Insights** | Low | ❌ Not added |
-| **Low** | **Sitemap.xml + robots.txt** | Low | ❌ Not added |
+| **Low** | **Vercel Analytics + Speed Insights** | Low | ✅ **Done** - Added to store layout |
+| **Low** | **Sitemap.xml + robots.txt** | Low | ✅ **Done** - `next-sitemap` configured |
 | **Low** | **Product reviews/ratings** | Medium | ❌ Not started |
 | **Low** | **Abandoned cart recovery** (email after N hours) | Medium | ❌ Not started |
 | **Low** | **Customer wishlist** | Low | ❌ Not started |
@@ -29,17 +29,20 @@
 | HTML email templates | ✅ |
 | Raw SQL + JSONB storage | ✅ |
 | Prisma for admin mutations | ✅ |
+| **Download limits enforced** (24h/3 downloads) | ✅ |
+| **Order status emails** (shipped/packed/refunded) | ✅ |
+| **Vercel Analytics + Speed Insights** | ✅ |
+| **Sitemap.xml + robots.txt** | ✅ |
+| **Product variant admin UI** | ✅ |
 
 ---
 
 ## Next Steps (Recommended Order)
 
 1. **Remove unused payment gateways** — Keep only Stripe + Mock
-2. **Enforce download limits** — Check `expiresAt` and `downloadCount` in `/api/download/[token]`
-3. **Hook order emails** — Call `orderConfirmationEmail`, `orderShippingEmail` from order actions
-3. **Add Vercel Analytics** — `npm i @vercel/analytics @vercel/speed-insights`
-4. **Add sitemap.xml** — `next-sitemap` or manual generation
-5. **Optional: Customer reviews** — If social proof needed
+2. **Clean up unused files** — `src/lib/checkout.ts`, `src/lib/payments/` (Razorpay/Cashfree), `scripts/migrate-data.ts`
+3. **Optional: Customer reviews** — If social proof needed
+4. **Optional: Abandoned cart recovery** — Email after N hours
 
 ---
 
@@ -56,10 +59,14 @@
 
 ## Architecture Note
 
-With 3D printing removed, synapse07 is now a **pure digital PDF store** with:
+synapse07 is now a **pure digital PDF store** with:
 - Raw SQL + JSONB (Fusion-inspired)
 - Per-customer cart with guest merge
 - Variant support (for future bundles/editions)
 - Stripe-only payments (simpler)
 - HTML email templates
 - Raw SQL + JSONB + Prisma hybrid
+- **Order status emails**: Shipped/Packed/Refunded
+- **Download limits**: 24h expiry + 3 downloads enforced
+- **Vercel Analytics + Speed Insights**
+- **Sitemap.xml** generation

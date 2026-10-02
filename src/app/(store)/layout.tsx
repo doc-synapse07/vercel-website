@@ -4,6 +4,8 @@ import { CartDrawer } from "@/components/cart/CartDrawer";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getSettings } from "@/lib/settings";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata: Metadata = {
   title: {
@@ -54,6 +56,8 @@ export default async function StoreLayout({ children }: { children: React.ReactN
       />
       <CartDrawer />
       </div>
+      <Analytics />
+      <SpeedInsights />
     </CartProvider>
   );
 }

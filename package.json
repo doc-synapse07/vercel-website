@@ -17,18 +17,22 @@
     "test:social": "tsx scripts/social-test.ts",
     "test:account": "tsx scripts/account-test.ts",
     "setup": "prisma generate && prisma db push && npm run db:seed",
-    "analyze": "ANALYZE=true npm run build"
+    "analyze": "ANALYZE=true npm run build",
+    "sitemap": "next-sitemap"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.699.0",
     "@aws-sdk/s3-request-presigner": "^3.699.0",
     "@neondatabase/serverless": "^1.2.0",
     "@prisma/client": "^6.1.0",
+    "@vercel/analytics": "^2.0.1",
+    "@vercel/speed-insights": "^2.0.0",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "jose": "^5.9.6",
     "lucide-react": "^0.468.0",
     "next": "15.5.27",
+    "next-sitemap": "^4.2.3",
     "nodemailer": "^6.9.16",
     "postgres": "^3.4.9",
     "razorpay": "^2.9.6",
