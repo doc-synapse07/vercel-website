@@ -1,0 +1,482 @@
+@import "tailwindcss";
+
+/* Class-based dark mode: `dark:` utilities respond to `.dark` on <html>,
+   which the header toggle (and the init script in the root layout) controls. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+  Design tokens. Tailwind v4 reads these into utilities, e.g. `bg-brand-600`,
+  `text-ink-700`, `rounded-card`.
+*/
+@theme {
+  --color-brand-50: #f0fdfa;
+  --color-brand-100: #ccfbf1;
+  --color-brand-200: #99f6e4;
+  --color-brand-300: #5eead4;
+  --color-brand-400: #2dd4bf;
+  --color-brand-500: #14b8a6;
+  --color-brand-600: #0d9488;
+  --color-brand-700: #0f766e;
+  --color-brand-800: #115e59;
+  --color-brand-900: #134e4a;
+  --color-brand-950: #042f2e;
+
+  --color-ink-50: #f8fafc;
+  --color-ink-100: #f1f5f9;
+  --color-ink-200: #e2e8f0;
+  --color-ink-300: #cbd5e1;
+  --color-ink-400: #94a3b8;
+  --color-ink-500: #64748b;
+  --color-ink-600: #475569;
+  --color-ink-700: #334155;
+  --color-ink-800: #1e293b;
+  --color-ink-900: #0f172a;
+
+  --color-accent-400: #fbbf24;
+  --color-accent-500: #f59e0b;
+  --color-accent-600: #d97706;
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --radius-card: 0.875rem;
+}
+
+* {
+  border-color: var(--color-ink-200);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #ffffff;
+  color: var(--color-ink-800);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Canvas + default text when .dark is on <html>. Component-level `dark:`
+   classes handle the rest; this is the backstop so no surface stays white.
+   The canvas is a near-black with a teal soul — surfaces (ink-800/900)
+   read as elevated layers above it. */
+.dark body {
+  background-color: #020806;
+  color: var(--color-ink-100);
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+/* ==========================================================================
+   Ambient hero background — pure CSS, zero assets, zero JS.
+
+   Two static radial glows plus one slowly drifting glow and a faint grid that
+   fades toward the edges. Only transform/opacity animate, so it stays on the
+   compositor and costs almost nothing ("ultra light"). Respects
+   prefers-reduced-motion.
+   ========================================================================== */
+.ambient-hero {
+  position: relative;
+  isolation: isolate;
+}
+.ambient-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(640px 320px at 12% 18%, rgb(45 212 191 / 0.14), transparent 62%),
+    radial-gradient(760px 380px at 88% 82%, rgb(13 148 136 / 0.16), transparent 62%),
+    radial-gradient(480px 480px at 55% 55%, rgb(20 184 166 / 0.05), transparent 65%);
+}
+.ambient-hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgb(148 163 184 / 0.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(148 163 184 / 0.07) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 90% 80% at 50% 40%, black 30%, transparent 75%);
+}
+.ambient-drift {
+  position: absolute;
+  inset: -20%;
+  z-index: -2;
+  pointer-events: none;
+  background: radial-gradient(420px 220px at 60% 30%, rgb(45 212 191 / 0.1), transparent 65%);
+  animation: ambient-drift 14s ease-in-out infinite alternate;
+}
+@keyframes ambient-drift {
+  from {
+    transform: translate3d(-4%, 2%, 0);
+  }
+  to {
+    transform: translate3d(4%, -3%, 0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ambient-drift {
+    animation: none;
+  }
+}
+
+/* A single focus treatment everywhere, so keyboard nav is obvious. */
+:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Product descriptions come from the imported catalog as raw HTML. */
+.rich-text {
+  line-height: 1.75;
+  color: var(--color-ink-700);
+}
+.rich-text p {
+  margin-bottom: 0.85rem;
+}
+.rich-text ul,
+.rich-text ol {
+  margin: 0 0 0.85rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.rich-text ul {
+  list-style: disc;
+}
+.rich-text ol {
+  list-style: decimal;
+}
+.rich-text strong {
+  color: var(--color-ink-900);
+  font-weight: 650;
+}
+.rich-text a {
+  color: var(--color-brand-700);
+  text-decoration: underline;
+}
+.rich-text li::marker {
+  color: var(--color-brand-600);
+}
+
+/* Product descriptions are raw HTML from the catalogue, so they need explicit
+   dark rules — there are no utility classes inside to hang `dark:` off. */
+.dark .rich-text {
+  color: var(--color-ink-300);
+}
+.dark .rich-text strong {
+  color: #fff;
+}
+.dark .rich-text a {
+  color: var(--color-brand-300);
+}
+.dark .rich-text li::marker {
+  color: var(--color-brand-400);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade-up {
+  animation: fade-up 0.35s ease-out both;
+}
+
+/* ==========================================================================
+   Buttons
+
+   One shape language across the whole site: the top-left and bottom-right
+   corners are cut at an angle, text is uppercase and tracked out, and the
+   whole thing lifts a couple of pixels on hover with a light sweeping across
+   it. Implemented as plain classes rather than per-component utility strings
+   so that every button in every route is guaranteed to match.
+
+   Palette is brand teal + ink only — no green. Every variant's hover stays
+   inside that family (teal darkens toward brand-800 / brand-900, outlines
+   fill toward brand-50 or white).
+
+   `clip-path` also clips borders, which is why the outline buttons still read
+   as outlined after the corners are cut.
+   ========================================================================== */
+
+.btn {
+  /* The shared cut-corner shape. */
+  --btn-clip: polygon(
+    7px 0,
+    100% 0,
+    100% calc(100% - 8px),
+    calc(100% - 8px) 100%,
+    0 100%,
+    0 8px
+  );
+
+  position: relative;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  clip-path: var(--btn-clip);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  border-radius: 0;
+  transition:
+    transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s ease,
+    background-color 0.25s ease,
+    color 0.25s ease;
+}
+
+/* Light sweeping across the face. */
+.btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -60%;
+  width: 40%;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent, rgb(255 255 255 / 0.35), transparent);
+  transform: skew(-20deg);
+  animation: btn-shine 3.4s ease-in-out infinite;
+}
+
+@keyframes btn-shine {
+  0%,
+  62% {
+    left: -60%;
+  }
+  86%,
+  100% {
+    left: 130%;
+  }
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--color-brand-600);
+  outline-offset: 3px;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  transform: none;
+}
+
+/* No motion for people who have asked for none. */
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .btn::after {
+    transition: none;
+    animation: none;
+  }
+  .btn:hover:not(:disabled) {
+    transform: none;
+  }
+}
+
+/* ---- variants ---- */
+
+.btn-primary {
+  background-color: var(--color-brand-700);
+  color: #fff;
+}
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--color-brand-800);
+  box-shadow: 0 14px 30px -14px rgb(15 118 110 / 0.7);
+}
+
+.btn-invert {
+  background-color: #fff;
+  color: var(--color-brand-800);
+}
+.btn-invert:hover:not(:disabled) {
+  background-color: var(--color-brand-50);
+  box-shadow: 0 14px 30px -16px rgb(0 0 0 / 0.5);
+}
+
+.btn-outline {
+  background-color: transparent;
+  color: var(--color-ink-700);
+  /* A hair inside the clip so the cut corners stay visible. */
+  box-shadow: inset 0 0 0 1px var(--color-ink-300);
+}
+.btn-outline:hover:not(:disabled) {
+  color: var(--color-brand-800);
+  box-shadow: inset 0 0 0 1px var(--color-brand-500);
+  background-color: var(--color-brand-50);
+}
+
+/* On dark sections the outline needs a light edge to be visible. Hover fills
+   white and flips the text to teal — still the same palette. */
+.btn-outline-light {
+  background-color: transparent;
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.45);
+}
+.btn-outline-light:hover:not(:disabled) {
+  background-color: #fff;
+  color: var(--color-brand-800);
+  box-shadow: inset 0 0 0 1px #fff;
+}
+
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-ink-600);
+  box-shadow: inset 0 0 0 1px transparent;
+}
+.btn-ghost:hover:not(:disabled) {
+  background-color: var(--color-ink-100);
+  color: var(--color-ink-900);
+}
+
+.btn-danger {
+  background-color: #fff;
+  color: #b91c1c;
+  box-shadow: inset 0 0 0 1px #fecaca;
+}
+.btn-danger:hover:not(:disabled) {
+  background-color: #fef2f2;
+  box-shadow: inset 0 0 0 1px #f87171;
+}
+
+/* ---- dark theme ----
+
+   The same variants on dark surfaces. Teal fills are untouched — they pop on
+   dark backgrounds as-is. Only the ink-dependent variants need remapping.
+   Scoped to `.storefront` (set on the (store) layout wrapper) so the admin
+   panel — which shares the same <html> — keeps its light buttons. */
+
+.dark .storefront .btn-outline {
+  color: var(--color-ink-200);
+  box-shadow: inset 0 0 0 1px var(--color-ink-600);
+}
+.dark .storefront .btn-outline:hover:not(:disabled) {
+  color: #fff;
+  background-color: rgb(20 184 166 / 0.12);
+  box-shadow: inset 0 0 0 1px var(--color-brand-400);
+}
+
+.dark .storefront .btn-invert {
+  background-color: var(--color-ink-100);
+  color: var(--color-ink-900);
+}
+.dark .storefront .btn-invert:hover:not(:disabled) {
+  background-color: #fff;
+}
+
+.dark .storefront .btn-outline-light:hover:not(:disabled) {
+  background-color: #fff;
+  color: var(--color-ink-900);
+  box-shadow: inset 0 0 0 1px #fff;
+}
+
+.dark .storefront .btn-ghost {
+  color: var(--color-ink-300);
+}
+.dark .storefront .btn-ghost:hover:not(:disabled) {
+  background-color: var(--color-ink-700);
+  color: #fff;
+}
+
+.dark .storefront .btn-danger {
+  background-color: transparent;
+  color: #fca5a5;
+  box-shadow: inset 0 0 0 1px #7f1d1d;
+}
+.dark .storefront .btn-danger:hover:not(:disabled) {
+  background-color: rgb(127 29 29 / 0.35);
+  box-shadow: inset 0 0 0 1px #ef4444;
+}
+
+/* Primary buttons go bright in the dark theme: luminous teal face, deep-teal
+   text, and a glow instead of a flat shadow. This is the "rich" treatment —
+   light mode keeps the deep-teal fill. */
+.dark .storefront .btn-primary {
+  background-color: var(--color-brand-400);
+  color: #042f2e;
+  box-shadow: 0 10px 32px -8px rgb(45 212 191 / 0.55);
+}
+.dark .storefront .btn-primary:hover:not(:disabled) {
+  background-color: var(--color-brand-300);
+  box-shadow: 0 16px 42px -10px rgb(94 234 212 / 0.65);
+}
+
+/* Card hover highlight. Added to product cards, exam tiles and listing tiles:
+   teal edge + glow + lift, the same language as the reference store. */
+@media (hover: hover) {
+  .dark .storefront .card-glow:hover {
+    border-color: var(--color-brand-500);
+    box-shadow:
+      0 20px 55px -14px rgb(20 184 166 / 0.4),
+      0 0 0 1px rgb(20 184 166 / 0.25);
+  }
+}
+
+/* ---- sizes ---- */
+
+.btn-xs {
+  --btn-clip: polygon(4px 0, 100% 0, 100% calc(100% - 5px), calc(100% - 5px) 100%, 0 100%, 0 5px);
+  padding: 0.35rem 0.7rem;
+  font-size: 11px;
+}
+
+.btn-sm {
+  --btn-clip: polygon(5px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  padding: 0.5rem 0.9rem;
+  font-size: 12px;
+}
+
+.btn-md {
+  padding: 0.7rem 1.25rem;
+  font-size: 13px;
+}
+
+.btn-lg {
+  padding: 0.9rem 1.75rem;
+  font-size: 14px;
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+.animate-slide-in {
+  animation: slide-in-right 0.25s ease-out both;
+}
+
+/* Hide scrollbar on the horizontal category rail */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

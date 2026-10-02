@@ -1,0 +1,246 @@
+// Synapse.07 — store database schema
+// Currently SQLite for local dev. To move to Postgres (Vercel):
+//   1. Change provider to "postgresql"
+//   2. Set DATABASE_URL to your hosted Postgres connection string
+//   3. npx prisma db push
+// No application code changes required.
+//
+// NOTE: SQLite does not support native enums, so enum-like fields are
+// String columns validated in code via src/lib/constants.ts
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         String   @default("ADMIN") // ADMIN | STAFF
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Category {
+  id          String    @id @default(cuid())
+  name        String
+  slug        String    @unique
+  description String?
+  image       String?
+  sortOrder   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  products Product[]
+
+  @@index([sortOrder])
+}
+
+model Product {
+  id               String   @id @default(cuid())
+  title            String
+  slug             String   @unique
+  shortDescription String?
+  description      String? // HTML
+  // Prices stored in paise (1 rupee = 100 paise) to avoid float issues
+  pricePaise       Int
+  mrpPaise         Int?
+  // DIGITAL = delivered as PDF download links, PHYSICAL = needs shipping
+  productType      String   @default("DIGITAL") // DIGITAL | PHYSICAL
+  coverImage       String?
+  // Physical product fields
+  weightGrams      Int?
+  stockQty         Int?
+  isActive         Boolean  @default(true)
+  isFeatured       Boolean  @default(false)
+  // Free products skip payment (price 0)
+  isFree           Boolean  @default(false)
+
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  files      ProductFile[]
+  orderItems OrderItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([isActive])
+  @@index([isFeatured])
+}
+
+model ProductFile {
+  id           String   @id @default(cuid())
+  productId    String
+  product      Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  fileName     String // original name shown to customer, e.g. "INICET PYQ Vol 1.pdf"
+  storageKey   String // key in R2 bucket / local path
+  storageDriver String  @default("r2") // r2 | local
+  sizeBytes    Int      @default(0)
+  contentType  String   @default("application/pdf")
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  downloadGrants DownloadGrant[]
+
+  @@index([productId])
+}
+
+/// One-time grant of download access to a specific file, created per paid order.
+/// Token is emailed to the customer; link expires after DOWNLOAD_TTL_HOURS (default 24).
+model DownloadGrant {
+  id            String   @id @default(cuid())
+  orderId       String
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId     String
+  productFileId String
+  productFile   ProductFile @relation(fields: [productFileId], references: [id], onDelete: Cascade)
+
+  token         String   @unique
+  expiresAt     DateTime
+  maxDownloads  Int      @default(3)
+  downloadCount Int      @default(0)
+  lastUsedAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Coupon {
+  id          String  @id @default(cuid())
+  code        String  @unique
+  description String?
+
+  discountType String // PERCENT | FLAT
+  // PERCENT -> value is percentage 1..100
+  // FLAT    -> value is paise
+  discountValue Int
+
+  minOrderPaise  Int?
+  maxDiscountPaise Int? // cap for percentage coupons
+
+  usageLimit    Int? // total redemptions allowed (null = unlimited)
+  perUserLimit  Int? // max redemptions per email (null = unlimited)
+  usedCount     Int   @default(0)
+
+  startsAt  DateTime?
+  expiresAt DateTime?
+  isActive  Boolean   @default(true)
+
+  redemptions CouponRedemption[]
+  orders      Order[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive])
+}
+
+model CouponRedemption {
+  id      String @id @default(cuid())
+  couponId String
+  coupon   Coupon @relation(fields: [couponId], references: [id], onDelete: Cascade)
+  orderId  String
+  order    Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  email    String
+  createdAt DateTime @default(now())
+
+  @@unique([couponId, orderId])
+  @@index([couponId, email])
+}
+
+model Order {
+  id          String @id @default(cuid())
+  orderNumber String @unique
+
+  customerName String
+  email        String
+  phone        String
+
+  subtotalPaise  Int
+  discountPaise  Int @default(0)
+  shippingPaise  Int @default(0)
+  totalPaise     Int
+
+  couponId String?
+  coupon   Coupon? @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  couponCode String?
+
+  status String @default("PENDING") // PENDING | PAID | FAILED | REFUNDED
+
+  paymentProvider String? // razorpay | stripe | cashfree | mock
+  paymentOrderId  String?
+  paymentRefId    String?
+  paymentSignature String?
+  paidAt           DateTime?
+
+  // For PHYSICAL products later
+  shippingAddress Json?
+  notes           String?
+
+  items    OrderItem[]
+  downloads DownloadGrant[]
+  redemptions CouponRedemption[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([email])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id      String @id @default(cuid())
+  orderId String
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+
+  // Snapshot so order history survives product edits/deletes
+  title        String
+  productType  String
+  unitPricePaise Int
+  quantity     Int  @default(1)
+  subtotalPaise Int
+
+  createdAt DateTime @default(now())
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+/// Storefront customers. Separate from AdminUser on purpose — customers must
+/// never be able to reach the admin panel, and admins must never appear in
+/// customer-facing flows. Email login, Google OAuth, or both: passwordHash is
+/// null for Google-only accounts, googleId is null for email-only ones.
+model Customer {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String?
+  googleId     String?  @unique
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([email])
+}
+
+/// Simple key/value store for admin-configurable settings (store name, email, etc.)
+model Setting {
+  key   String @id
+  value String
+}
