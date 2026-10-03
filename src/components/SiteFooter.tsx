@@ -80,7 +80,7 @@ export function SiteFooter({
                   rel="noopener noreferrer"
                   title={label}
                   aria-label={label}
-                  className="grid h-11 w-11 place-items-center rounded-lg border border-ink-200 bg-white text-ink-500 transition-colors hover:border-brand-400 hover:text-brand-700 dark:border-ink-700 dark:bg-ink-800 dark:text-ink-300 dark:hover:border-brand-500 dark:hover:text-brand-300"
+                  className="grid h-12 w-12 place-items-center border-2 border-brand-600/40 bg-brand-50/50 text-brand-800 transition-all hover:-translate-y-0.5 hover:border-brand-600 hover:bg-brand-700 hover:text-white hover:shadow-lg hover:shadow-brand-700/25 dark:border-brand-500/40 dark:bg-brand-950/40 dark:text-brand-300 dark:hover:border-brand-400 dark:hover:bg-brand-400 dark:hover:text-ink-950"
                 >
                   <Icon size={18} />
                 </a>

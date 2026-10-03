@@ -54,6 +54,34 @@ function bool(formData: FormData, key: string): boolean {
   return formData.get(key) === "on" || formData.get(key) === "true";
 }
 
+/**
+ * Strips anything executable from admin-entered rich text before it is stored
+ * and rendered with dangerouslySetInnerHTML: script-capable tags, event
+ * handler attributes and javascript:/data: URLs. Formatting tags, links and
+ * pasted Word styling pass through untouched.
+ */
+function cleanDescription(html: string): string {
+  let out = html
+    .replace(
+      /<(script|style|iframe|object|embed|link|meta|base|form|input|button|textarea|select|option|video|audio|source|canvas)[^>]*>[\s\S]*?<\/\1\s*>/gi,
+      "",
+    )
+    .replace(
+      /<\/?(script|style|iframe|object|embed|link|meta|base|form|input|button|textarea|select|option|video|audio|source|canvas)[^>]*\/?>/gi,
+      "",
+    );
+  out = out.replace(/\s+on[a-z]+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, "");
+  out = out.replace(
+    /\s(href|src)\s*=\s*"((?:javascript|data|vbscript)[^"]*)"/gi,
+    ' $1="#"',
+  );
+  out = out.replace(
+    /\s(href|src)\s*=\s*'((?:javascript|data|vbscript)[^']*)'/gi,
+    " $1='#'",
+  );
+  return out.trim();
+}
+
 /** Uploads every attached PDF and creates ProductFile rows. */
 async function attachFiles(params: {
   productId: string;
@@ -185,7 +213,7 @@ export async function createProductAction(
       title: data.title,
       slug,
       shortDescription: data.shortDescription || null,
-      description: data.description || null,
+      description: cleanDescription(data.description) || null,
       categoryId: data.categoryId,
       pricePaise,
       mrpPaise: isFree ? null : toPaise(data.mrp),
@@ -278,7 +306,7 @@ export async function updateProductAction(
       title: data.title,
       slug,
       shortDescription: data.shortDescription || null,
-      description: data.description || null,
+      description: cleanDescription(data.description) || null,
       categoryId: data.categoryId,
       pricePaise,
       mrpPaise: isFree ? null : toPaise(data.mrp),

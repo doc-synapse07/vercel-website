@@ -12,5 +12,4 @@ export type PaymentProvider = (typeof PAYMENT_PROVIDERS)[number];
 export const DISCOUNT_TYPES = ["PERCENT", "FLAT"] as const;
 export type DiscountType = (typeof DISCOUNT_TYPES)[number];
 
-export const ADMIN_ROLES = ["ADMIN", "STAFF"] as const;
-export type AdminRole = (typeof ADMIN_ROLES)[number];
+export type AdminRole = "ADMIN" | "STAFF";

@@ -75,30 +75,59 @@ export default async function AdminProductsPage({
       </div>
 
       {/* filters */}
-      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <form className="relative flex-1" action="/admin/products">
+      <div className="mb-5 flex flex-col gap-3">
+        <form className="flex gap-2" action="/admin/products">
           {categorySlug && <input type="hidden" name="cat" value={categorySlug} />}
-          <Search
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-400"
-          />
-          <input
-            type="search"
-            name="q"
-            defaultValue={search}
-            placeholder="Search by title…"
-            className="w-full rounded-lg border border-ink-300 py-2.5 pl-9 pr-3 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-          />
+          <div className="relative flex-1">
+            <Search
+              size={17}
+              className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400"
+            />
+            <input
+              type="search"
+              name="q"
+              defaultValue={search}
+              placeholder="Search by title or slug…"
+              aria-label="Search products"
+              className="w-full rounded-lg border border-ink-300 bg-white py-2.5 pl-10 pr-9 text-sm text-ink-900 shadow-sm outline-none transition-all placeholder:text-ink-400 focus:border-brand-500 focus:ring-4 focus:ring-brand-100"
+            />
+            {search && (
+              <Link
+                href={buildUrl({ q: undefined, page: undefined })}
+                title="Clear search"
+                aria-label="Clear search"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-0.5 text-ink-400 transition-colors hover:bg-ink-100 hover:text-ink-700"
+              >
+                ✕
+              </Link>
+            )}
+          </div>
+          <button
+            type="submit"
+            className="btn btn-primary btn-sm shrink-0 px-5"
+          >
+            <Search size={15} /> Search
+          </button>
         </form>
+        {(search || categorySlug) && (
+          <p className="text-xs text-ink-500">
+            {total} {total === 1 ? "result" : "results"}
+            {search && (
+              <>
+                {" "}for <span className="font-semibold text-ink-800">“{search}”</span>
+              </>
+            )}
+            {" · "}
+            <Link href="/admin/products" className="font-medium text-brand-700 hover:underline">
+              Clear all filters
+            </Link>
+          </p>
+        )}
 
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex flex-wrap justify-center gap-2">
           <Link
             href={buildUrl({ cat: undefined })}
-            className={`shrink-0 rounded-lg border px-3.5 py-2 text-sm font-medium ${
-              !categorySlug
-                ? "border-brand-700 bg-brand-700 text-white"
-                : "border-ink-300 bg-white text-ink-600 hover:border-brand-400"
-            }`}
+            className={`btn btn-sm ${!categorySlug ? "btn-primary" : "btn-outline"}`}
           >
             All
           </Link>
@@ -106,11 +135,7 @@ export default async function AdminProductsPage({
             <Link
               key={c.slug}
               href={buildUrl({ cat: c.slug })}
-              className={`shrink-0 rounded-lg border px-3.5 py-2 text-sm font-medium ${
-                categorySlug === c.slug
-                  ? "border-brand-700 bg-brand-700 text-white"
-                  : "border-ink-300 bg-white text-ink-600 hover:border-brand-400"
-              }`}
+              className={`btn btn-sm ${categorySlug === c.slug ? "btn-primary" : "btn-outline"}`}
             >
               {c.name}
             </Link>
@@ -172,7 +197,9 @@ export default async function AdminProductsPage({
                       </div>
                     </td>
 
-                    <td className="px-4 py-3 text-ink-600">{p.category.name}</td>
+                    <td className="max-w-[180px] px-4 py-3 text-ink-600">
+                      <span className="line-clamp-2">{p.category.name}</span>
+                    </td>
 
                     <td className="px-4 py-3">
                       <span className="font-semibold text-ink-900">
@@ -258,11 +285,7 @@ export default async function AdminProductsPage({
             <Link
               key={n}
               href={buildUrl({ page: n === 1 ? undefined : n })}
-              className={`flex h-9 min-w-9 items-center justify-center rounded-lg border px-3 text-sm font-medium ${
-                n === page
-                  ? "border-brand-700 bg-brand-700 text-white"
-                  : "border-ink-300 bg-white text-ink-600 hover:border-brand-400"
-              }`}
+              className={`btn btn-sm min-w-10 ${n === page ? "btn-primary" : "btn-outline"}`}
             >
               {n}
             </Link>

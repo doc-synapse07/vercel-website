@@ -1,4 +1,4 @@
-import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { PutObjectCommand, GetObjectCommand, DeleteObjectCommand, ListObjectsV2Command, S3Client } from "@aws-sdk/client-s3";
 import { createHash, randomUUID } from "crypto";
 import { promises as fs } from "fs";
 import path from "path";
@@ -118,4 +118,30 @@ export async function deleteFile(key: string, driver: StorageDriver = "r2"): Pro
   }
   const target = assertSafeLocalKey(key);
   await fs.rm(target, { force: true });
+}
+
+/** Bucket totals for the admin usage card. Zeroed when R2 is not configured. */
+export async function getR2Stats(): Promise<{ objectCount: number; totalBytes: number }> {
+  if (!isR2Configured()) return { objectCount: 0, totalBytes: 0 };
+  let objectCount = 0;
+  let totalBytes = 0;
+  let continuationToken: string | undefined;
+  try {
+    do {
+      const res = await getR2Client().send(
+        new ListObjectsV2Command({
+          Bucket: process.env.R2_BUCKET!,
+          ContinuationToken: continuationToken,
+        }),
+      );
+      for (const obj of res.Contents ?? []) {
+        objectCount += 1;
+        totalBytes += obj.Size ?? 0;
+      }
+      continuationToken = res.NextContinuationToken;
+    } while (continuationToken);
+  } catch {
+    return { objectCount: 0, totalBytes: 0 };
+  }
+  return { objectCount, totalBytes };
 }

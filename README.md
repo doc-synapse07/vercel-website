@@ -43,8 +43,9 @@ net for interrupted sessions.
 
 **Delivery** — on successful payment the server creates one `DownloadGrant` per file with an
 unguessable token and emails the links. Files stream only through `/api/download/[token]`
-after the grant is validated for expiry and remaining uses, so purchased PDFs are never
-reachable by guessing a URL.
+after the grant is validated for expiry (`DOWNLOAD_TTL_HOURS`, default 24) and remaining
+uses (`DOWNLOAD_MAX_USES`, default 3), so purchased PDFs are never reachable by guessing a URL.
+Digital products are non-returnable — order statuses are `PENDING | PAID | FAILED` only.
 
 ---
 
@@ -54,7 +55,7 @@ reachable by guessing a URL.
 | --- | --- |
 | Framework | Next.js 15 App Router, React 19 |
 | Styling | Tailwind CSS v4, Lucide icons |
-| Database | Postgres (Neon) — Prisma ORM for transactional data; document-style `s_*` tables (JSONB) for catalogue/content |
+| Database | Postgres (Neon). Prisma ORM is the source of truth (orders, coupons, grants, customers, admin users, settings); `src/lib/store.ts` is a catalogue *read* layer over `s_*` JSONB tables |
 | Cache | Next.js `unstable_cache` with tag-based revalidation (`CACHE_TAGS`) |
 | Auth | Admin: password-only login, signed JWT (`jose`) in `httpOnly` cookie, bcrypt cost 12. Customers: email/password + Google OAuth (separate `Customer` model) |
 | Payments | Razorpay, Stripe, Cashfree, mock sandbox |
@@ -92,15 +93,16 @@ Browser
                         └──────────────────────────────────────────────┘
 ```
 
-**Data layer — two complementary paths:**
+**Data layer — Prisma first, `store.ts` for catalogue reads:**
 
-- `src/lib/store.ts` — catalogue and content (products, categories, customers, orders, settings).
-  Reads `data/*.json` when no database URL is set (offline local fallback); otherwise uses the
-  `s_*` tables in Postgres (Neon serverless on Vercel/edge, `postgres-js` elsewhere).
+- `src/lib/db.ts` (Prisma) — the source of truth: order fulfilment, coupons and redemptions,
+  download grants, customer auth, admin users, SMTP/social secrets, settings.
+- `src/lib/store.ts` — catalogue *read* layer only (products, categories, settings, store stats)
+  over `s_*` JSONB tables in the same Postgres database (Neon serverless on Vercel/edge,
+  `postgres-js` elsewhere). Falls back to `data/*.json` when no database URL is set.
   `src/lib/queries.ts` wraps it in `unstable_cache` with `CACHE_TAGS`, so admin edits revalidate
-  instantly via `revalidateTag`.
-- `src/lib/db.ts` (Prisma) — transactional and relational data: order fulfilment, coupons and
-  redemptions, download grants, customer auth, admin users, SMTP secrets, settings overrides.
+  instantly via `revalidateTag`. Product/category/order/customer *mutations* live in Prisma and
+  admin server actions — not in `store.ts`.
 
 **Money** — every price, discount and total is an integer number of **paise** (`₹199 = 19900`).
 Client totals are never trusted: `/api/checkout` re-reads products from the database,
@@ -122,25 +124,25 @@ prisma/
   data/catalog.ts      seed data: categories, products, coupons
   data/cover-images.ts cover-image manifest shared by downloader + seeder
 scripts/
-  smoke-test.ts        end-to-end HTTP test (checkout → coupon → payment → download)
-  coupon-test.ts       coupon rule-engine test (caps, expiry, limits)
-  account-test.ts      auth validation, hashing, Google link flow
-  smtp-test.ts / social-test.ts   email + social-proof checks
-  migrate-data.ts / setup-sql.ts  data migration helpers
-  fetch-images.ts / localise-cover-images.ts   cover pipeline
+  smoke-test.ts / coupon-test.ts / account-test.ts / smtp-test.ts / social-test.ts
+                       test suites (see `npm run test:*`)
+  fetch-images.ts / localise-cover-images.ts   one-time cover pipeline
   attach-sample-pdf.ts throwaway PDFs for exercising downloads
+  repair-category-slugs.ts  one-time categorySlug repair (safe to re-run)
 src/
   app/
     (store)/          home, products, product detail, category, cart,
                       checkout (+ mock), order success, account, services,
                       contact, faq, privacy, terms, returns
-    admin/            layout, dashboard, products, orders, coupons, settings, login
+    admin/            layout, dashboard, products (+ VariantManager), orders,
+                      coupons, settings, login
     api/              auth/google, checkout, coupons, download, media,
                       payments (mock + verify), products, webhooks
-  components/         header, footer, product card, search, cart, checkout UI
+  components/         header, footer, product card, search, cart, checkout UI,
+                      VariantManager (physical-product variants)
   lib/
-    store.ts          JSON ↔ Postgres document layer (catalogue/content)
-    db.ts             Prisma client singleton
+    store.ts          catalogue *read* layer over s_* JSONB tables
+    db.ts             Prisma client singleton (source of truth)
     queries.ts        cached read API + CACHE_TAGS
     orders.ts         totals, pending orders, fulfilment, download grants
     coupons.ts        coupon validation + redemption bookkeeping
@@ -148,7 +150,7 @@ src/
     storage.ts        R2 with local ./storage fallback
     mail.ts / mail-config.ts / order-emails.ts   email pipeline
     secrets.ts        AES-256-GCM sealing
-    auth.ts / customer-auth.ts / google-oauth.ts auth + sessions
+    auth.ts / auth-password.ts / customer-auth.ts / google-oauth.ts auth + sessions
     settings.ts / social-stats.ts  store + social-proof config
     utils.ts / constants.ts / types.ts / account-validation.ts
 ```
@@ -197,10 +199,13 @@ Tests create only throwaway data and clean up after themselves.
 | Command | Purpose |
 | --- | --- |
 | `npm run dev` | Dev server on port 3000 |
-| `npm run build` | `prisma generate` + production build |
+| `npm run build` | `prisma generate` + production build (`postbuild` generates sitemap + robots) |
+| `npm run typecheck` | Typecheck (`tsc --noEmit`) |
 | `npm start` | Serve the production build |
 | `npm run db:push` / `db:seed` / `db:reset` / `db:studio` | Schema sync, seed, reset, Studio |
-| `npx tsc --noEmit` | Typecheck |
+| `npm run test:smoke` / `test:coupon` / `test:account` / `test:smtp` / `test:social` | Test suites |
+| `npm run sitemap` | Regenerate sitemap + robots (also runs automatically after build) |
+| `npm run analyze` | `ANALYZE=true` production build with bundle report |
 
 ---
 
@@ -210,10 +215,12 @@ All keys are documented in `.env.example`. The required ones:
 
 | Variable | Purpose |
 | --- | --- |
-| `DATABASE_URL` | Postgres connection string (Neon in production) |
+| `DATABASE_URL` | Postgres connection string (Neon in production). `POSTGRES_URL` also works (Vercel default; wins if both are set) |
 | `AUTH_SECRET` | Signs session cookies (≥ 32 random chars in production) |
 | `SETTINGS_ENCRYPTION_KEY` | Seals admin-panel secrets; different value from `AUTH_SECRET`, kept stable |
 | `NEXT_PUBLIC_SITE_URL` | Canonical URL (used for OAuth callbacks, emails, sitemap) |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Seed admin login (`npm run db:seed`) — change after first login |
+| `DOWNLOAD_TTL_HOURS` / `DOWNLOAD_MAX_USES` | Download-link expiry window and per-link cap (defaults 24 / 3) |
 
 Optional — each has a graceful fallback:
 
@@ -262,5 +269,7 @@ Optional — each has a graceful fallback:
 The 10 categories and 32 products are defined in `prisma/data/catalog.ts`, the single source of
 truth for the seed. Prices and cover images mirror the reference store; the PDF files themselves
 are uploaded by the store owner through the admin panel. Covers are downloaded once into
-`public/products/` (see `scripts/fetch-images.ts`) so the store does not depend on third-party
-hosts staying up.
+`public/products/` (see `scripts/fetch-images.ts` + `scripts/localise-cover-images.ts`) so the
+store does not depend on third-party hosts staying up. Physical products can additionally carry
+priced variants (materials/qualities) via the admin product form — variants live inside the
+catalogue document, not as separate Prisma models.

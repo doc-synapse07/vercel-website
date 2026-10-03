@@ -1,72 +1,56 @@
-## What's Pending (Digital PDF Store Only)
+# Project status — synapse07 (digital PDF store)
 
-| Priority | Feature | Effort | Status |
-|----------|---------|--------|--------|
-| **High** | **Stripe-only payments** (remove Cashfree/Razorpay/Mock) | Low | ❌ Not started |
-| **High** | **Digital download enforcement** (24h expiry, 3 downloads limit) | Low | ✅ **Done** - Already enforced in `/api/download/[token]` |
-| **Medium** | **Order status emails** (shipped/packed/refunded) | Low | ✅ **Done** - Hooked in `updateOrderStatusAction` |
-| **Medium** | **Coupon validation edge cases** (per-user, expiry, caps) | Low | ✅ Working |
-| **Medium** | **Admin order management** (status changes, refunds) | Low | ✅ Working |
-| **Low** | **Vercel Analytics + Speed Insights** | Low | ✅ **Done** - Added to store layout |
-| **Low** | **Sitemap.xml + robots.txt** | Low | ✅ **Done** - `next-sitemap` configured |
-| **Low** | **Product reviews/ratings** | Medium | ❌ Not started |
-| **Low** | **Abandoned cart recovery** (email after N hours) | Medium | ❌ Not started |
-| **Low** | **Customer wishlist** | Low | ❌ Not started |
+> Last reviewed: full dead-code + structure audit. Prisma is the source of truth.
+> `src/lib/store.ts` is a catalogue *read* layer only.
 
----
+## Done
 
-## What's Working (Digital PDF Store)
-
-| Feature | Status |
-|---------|--------|
-| Product catalog (categories, products, variants) | ✅ |
-| Cart (per-customer + guest merge) | ✅ |
-| Checkout (Stripe + Mock) | ✅ |
-| Digital delivery (instant email + download page) | ✅ |
-| Coupons (%, flat, caps, limits, expiry) | ✅ |
-| Admin panel (products, orders, coupons, settings) | ✅ |
-| Customer accounts (orders, downloads) | ✅ |
-| HTML email templates | ✅ |
-| Raw SQL + JSONB storage | ✅ |
-| Prisma for admin mutations | ✅ |
-| **Download limits enforced** (24h/3 downloads) | ✅ |
-| **Order status emails** (shipped/packed/refunded) | ✅ |
-| **Vercel Analytics + Speed Insights** | ✅ |
-| **Sitemap.xml + robots.txt** | ✅ |
-| **Product variant admin UI** | ✅ |
-
----
-
-## Next Steps (Recommended Order)
-
-1. **Remove unused payment gateways** — Keep only Stripe + Mock
-2. **Clean up unused files** — `src/lib/checkout.ts`, `src/lib/payments/` (Razorpay/Cashfree), `scripts/migrate-data.ts`
-3. **Optional: Customer reviews** — If social proof needed
-4. **Optional: Abandoned cart recovery** — Email after N hours
-
----
-
-## Files to Clean Up (Optional)
-
-| File | Reason |
+| Area | Status |
 |------|--------|
-| `src/lib/checkout.ts` (Cashfree/Razorpay logic) | Remove if Stripe-only |
-| `src/lib/payments/` (Razorpay, Cashfree) | Remove if Stripe-only |
-| `src/app/(store)/checkout/mock/` | Keep for dev, hide in prod |
-| `scripts/migrate-data.ts` | One-time use, can archive |
+| Product catalog (categories, products, variants UI) | ✅ |
+| Cart (per-customer + guest merge) | ✅ |
+| Checkout (Razorpay / Stripe / Cashfree / mock sandbox) | ✅ |
+| Digital delivery (instant email + success-page links) | ✅ |
+| Download limits enforced (`DOWNLOAD_TTL_HOURS` / `DOWNLOAD_MAX_USES`, default 24h / 3 uses) | ✅ |
+| Coupons (percent/flat, caps, expiry, per-user + total limits) | ✅ |
+| Admin panel (products, orders, coupons, settings, dashboard) | ✅ |
+| Customer accounts (email/password + Google, order history) | ✅ |
+| Order status emails (shipped/packed) + resend-links flow | ✅ |
+| HTML email pipeline (`mail.ts` + `order-emails.ts`) | ✅ |
+| Vercel Analytics + Speed Insights | ✅ |
+| Sitemap + robots (`npm run sitemap`, also runs on `postbuild`) | ✅ |
+| Cache tags (`CACHE_TAGS` + `revalidateTag` on admin mutations) | ✅ |
+| Bundle analyzer (`npm run analyze`) | ✅ |
 
----
+## Deliberately out of scope
 
-## Architecture Note
+| Item | Reason |
+|------|--------|
+| Refunds / returns for digital products | Digital downloads are non-returnable; statuses are `PENDING \| PAID \| FAILED` |
+| 3D-printing / STL upload / courier shipping | Physical-goods track removed; store is digital-only |
+| Stripe-only migration | Keeping Razorpay + Cashfree for the Indian market |
 
-synapse07 is now a **pure digital PDF store** with:
-- Raw SQL + JSONB (Fusion-inspired)
-- Per-customer cart with guest merge
-- Variant support (for future bundles/editions)
-- Stripe-only payments (simpler)
-- HTML email templates
-- Raw SQL + JSONB + Prisma hybrid
-- **Order status emails**: Shipped/Packed/Refunded
-- **Download limits**: 24h expiry + 3 downloads enforced
-- **Vercel Analytics + Speed Insights**
-- **Sitemap.xml** generation
+## Optional follow-ups (low priority)
+
+| Item | Effort |
+|------|--------|
+| Product reviews / ratings (social proof) | Medium |
+| Abandoned-cart recovery email | Medium |
+| Customer wishlist | Low |
+| Split `src/lib/payments/index.ts` per gateway | Low (cleanup only) |
+| Collapse `Settings` types (`lib/settings.ts` vs `lib/types.ts`) | Low (cleanup only) |
+
+## Notes for contributors
+
+- **Data ownership:** Prisma (`src/lib/db.ts`) owns all writes. `src/lib/store.ts`
+  exposes catalogue *reads* (`getPublishedProducts`, `getProductBySlug`,
+  `getPopularProducts`, `getRelatedProducts`, `getCategories`, `getCategoryBySlug`,
+  `getSettings`, `setSetting`, `getStoreStats`). Do not add order/customer
+  mutations to `store.ts`.
+- **Money:** all prices/totals are integer paise. Never trust client totals —
+  `/api/checkout` recomputes everything server-side.
+- **Secrets:** admin-panel secrets are AES-256-GCM sealed (`SETTINGS_ENCRYPTION_KEY`
+  falling back to `AUTH_SECRET`).
+- **One-time scripts:** `scripts/repair-category-slugs.ts` is idempotent and safe to
+  re-run; `fetch-images` / `localise-cover-images` / `attach-sample-pdf` are
+  documented dev/one-time helpers.

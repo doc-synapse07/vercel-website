@@ -131,7 +131,6 @@ export type Settings = {
   youtubeUrl: string;
   telegramUrl: string;
   whatsappUrl: string;
-  aboutText: string;
   heroTitle: string;
   heroSubtitle: string;
   upiId: string;

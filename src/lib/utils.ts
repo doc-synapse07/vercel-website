@@ -19,11 +19,6 @@ export function paiseToRupees(paise: number): number {
   return Math.round(paise / 100);
 }
 
-/** Rupees -> paise */
-export function rupeesToPaise(rupees: number): number {
-  return Math.round(rupees * 100);
-}
-
 export function discountPercent(mrpPaise?: number | null, pricePaise?: number | null): number | null {
   if (!mrpPaise || !pricePaise || mrpPaise <= pricePaise) return null;
   return Math.round(((mrpPaise - pricePaise) / mrpPaise) * 100);
@@ -81,12 +76,6 @@ export function formatDate(date: Date | string): string {
   return new Intl.DateTimeFormat("en-IN", {
     dateStyle: "medium",
     timeStyle: "short",
-  }).format(new Date(date));
-}
-
-export function formatDateOnly(date: Date | string): string {
-  return new Intl.DateTimeFormat("en-IN", {
-    dateStyle: "medium",
   }).format(new Date(date));
 }
 

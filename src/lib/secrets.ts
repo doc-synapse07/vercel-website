@@ -83,8 +83,3 @@ export function decryptSecret(value: string): string {
   }
 }
 
-/** Renders a secret for display without revealing it. */
-export function maskSecret(value: string): string {
-  if (!value) return "not set";
-  return "saved (••••••••)";
-}

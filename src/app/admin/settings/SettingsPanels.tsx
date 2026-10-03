@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { Loader2, Save, KeyRound } from "lucide-react";
 import {
   saveSettingsAction,
@@ -8,6 +8,7 @@ import {
   type ActionState,
 } from "@/app/admin/actions/auth";
 import type { Settings } from "@/lib/settings";
+import { formatCompact } from "@/components/StatsMatrix";
 
 const initialState: ActionState = { ok: false };
 
@@ -51,8 +52,51 @@ function Field({
   );
 }
 
-function SectionCard({
-  title,
+/**
+ * Manual follower/subscriber count with a live storefront preview:
+ * type 57800 and it shows "→ 57.8K" — exactly what the homepage will render.
+ */
+function CompactCountField({
+  label,
+  name,
+  defaultValue,
+  placeholder,
+}: {
+  label: string;
+  name: string;
+  defaultValue?: string;
+  placeholder?: string;
+}) {
+  const [preview, setPreview] = useState(() => formatCompact(defaultValue));
+  return (
+    <div>
+      <label htmlFor={name} className="mb-1.5 block text-sm font-medium text-ink-800">
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          id={name}
+          name={name}
+          inputMode="numeric"
+          defaultValue={defaultValue}
+          placeholder={placeholder}
+          onChange={(e) => setPreview(formatCompact(e.target.value))}
+          className="w-full rounded-lg border border-ink-300 bg-white px-3 py-2.5 pr-24 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
+        />
+        {preview && (
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md bg-brand-50 px-2 py-0.5 text-xs font-bold text-brand-800">
+            → {preview}
+          </span>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-ink-500">
+        Manual fallback — only used when the API below cannot be reached. Number only.
+      </p>
+    </div>
+  );
+}
+
+function SectionCard({  title,
   description,
   children,
 }: {
@@ -125,13 +169,11 @@ function StoreSettingsForm({ settings }: { settings: Settings }) {
             defaultValue={settings.instagramUrl}
             placeholder="https://instagram.com/…"
           />
-          <Field
+          <CompactCountField
             label="Instagram followers"
             name="instagramFollowers"
             defaultValue={settings.instagramFollowers}
-            inputMode="numeric"
             placeholder="12500"
-            hint="Manual fallback — only used when the API below cannot be reached. Number only."
           />
           <Field
             label="YouTube URL"
@@ -139,13 +181,11 @@ function StoreSettingsForm({ settings }: { settings: Settings }) {
             defaultValue={settings.youtubeUrl}
             placeholder="https://youtube.com/@…"
           />
-          <Field
+          <CompactCountField
             label="YouTube subscribers"
             name="youtubeSubscribers"
             defaultValue={settings.youtubeSubscribers}
-            inputMode="numeric"
             placeholder="8400"
-            hint="Manual fallback — only used when the API below cannot be reached. Number only."
           />
           <Field
             label="Telegram group URL"
@@ -160,17 +200,6 @@ function StoreSettingsForm({ settings }: { settings: Settings }) {
             placeholder="https://wa.me/…"
           />
         </div>
-      </SectionCard>
-
-      <SectionCard title="About text" description="Used on the storefront footer.">
-        <textarea
-          id="aboutText"
-          name="aboutText"
-          rows={4}
-          defaultValue={settings.aboutText}
-          maxLength={1000}
-          className="w-full resize-y rounded-lg border border-ink-300 bg-white px-3 py-2.5 text-sm outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-100"
-        />
       </SectionCard>
 
       <div className="flex items-center gap-3">

@@ -2,12 +2,10 @@ import { promises as fs } from "fs";
 import path from "path";
 import postgres from "postgres";
 import { neon as createNeon } from "@neondatabase/serverless";
-import type { Product, Order, Customer, Category } from "./types";
+import type { Product, Category } from "./types";
 
 const dataDir = path.join(process.cwd(), "data");
 const productsPath = path.join(dataDir, "products.json");
-const ordersPath = path.join(dataDir, "orders.json");
-const customersPath = path.join(dataDir, "customers.json");
 const categoriesPath = path.join(dataDir, "categories.json");
 const settingsPath = path.join(dataDir, "settings.json");
 
@@ -32,6 +30,10 @@ function getPg(): any {
 }
 
 function sqlJson(sql: any, value: unknown): unknown {
+  // A bare string (e.g. a store name) is NOT valid JSON — Postgres rejects it
+  // with "invalid input syntax for type json". Quote it first so the jsonb
+  // column receives a proper JSON string literal.
+  if (typeof value === "string") return JSON.stringify(value);
   if (sql && typeof sql.json === "function") return sql.json(value);
   return value;
 }
@@ -92,17 +94,6 @@ export async function getPublishedProducts(): Promise<Product[]> {
   return items.filter((p) => p.isActive);
 }
 
-export async function getProduct(id: string): Promise<Product | undefined> {
-  const sql = getPg();
-  if (!sql) {
-    const items = await getProducts();
-    return items.find((p) => p.id === id);
-  }
-  await ensureSchema(sql);
-  const rows = await sql`SELECT data FROM s_products WHERE id = ${id} LIMIT 1`;
-  return rows.length ? (rows[0].data as Product) : undefined;
-}
-
 export async function getProductBySlug(slug: string): Promise<Product | undefined> {
   const sql = getPg();
   if (!sql) {
@@ -114,115 +105,14 @@ export async function getProductBySlug(slug: string): Promise<Product | undefine
   return rows.length ? (rows[0].data as Product) : undefined;
 }
 
-export async function getFeaturedProducts(take = 8): Promise<Product[]> {
-  const items = await getPublishedProducts();
-  return items.filter(p => p.isFeatured).slice(0, take);
-}
-
 export async function getPopularProducts(take = 4): Promise<Product[]> {
   const items = await getPublishedProducts();
   return items.slice(0, take);
 }
 
-export async function getProductsByCategory(categorySlug: string): Promise<Product[]> {
-  const items = await getPublishedProducts();
-  return items.filter(p => p.categorySlug === categorySlug);
-}
-
 export async function getRelatedProducts(productId: string, categorySlug: string, take = 4): Promise<Product[]> {
   const items = await getPublishedProducts();
   return items.filter(p => p.categorySlug === categorySlug && p.id !== productId).slice(0, take);
-}
-
-export async function saveProducts(items: Product[]) {
-  const sql = getPg();
-  if (!sql) {
-    await writeJson(productsPath, items);
-    return;
-  }
-  await ensureSchema(sql);
-  if (pgIsNeon || !sql.begin) {
-    for (let i = 0; i < items.length; i++) {
-      await sql`INSERT INTO s_products (id, position, data) VALUES (${items[i].id}, ${i}, ${sqlJson(sql, items[i])})
-        ON CONFLICT (id) DO UPDATE SET position = EXCLUDED.position, data = EXCLUDED.data`;
-    }
-    if (items.length === 0) {
-      await sql`DELETE FROM s_products`;
-    } else {
-      await sql`DELETE FROM s_products WHERE NOT (id = ANY(${items.map((item) => item.id)}))`;
-    }
-    return;
-  }
-  await sql.begin(async (tx: any) => {
-    for (let i = 0; i < items.length; i++) {
-      await tx`INSERT INTO s_products (id, position, data) VALUES (${items[i].id}, ${i}, ${tx.json(items[i])})
-        ON CONFLICT (id) DO UPDATE SET position = EXCLUDED.position, data = EXCLUDED.data`;
-    }
-    if (items.length === 0) {
-      await tx`DELETE FROM s_products`;
-    } else {
-      await tx`DELETE FROM s_products WHERE NOT (id = ANY(${items.map((item) => item.id)}))`;
-    }
-  });
-}
-
-export async function saveProduct(product: Product): Promise<void> {
-  const sql = getPg();
-  if (!sql) {
-    const items = await getProducts();
-    const index = items.findIndex((p) => p.id === product.id);
-    if (index === -1) items.unshift(product);
-    else items[index] = product;
-    await writeJson(productsPath, items);
-    return;
-  }
-  await ensureSchema(sql);
-  await sql`
-    INSERT INTO s_products (id, position, data)
-    VALUES (
-      ${product.id},
-      COALESCE((SELECT MIN(position) - 1 FROM s_products), 0),
-      ${sqlJson(sql, product)}
-    )
-    ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
-  `;
-}
-
-export async function deleteProduct(id: string): Promise<void> {
-  const sql = getPg();
-  if (!sql) {
-    const items = await getProducts();
-    await writeJson(productsPath, items.filter((p) => p.id !== id));
-    return;
-  }
-  await ensureSchema(sql);
-  await sql`DELETE FROM s_products WHERE id = ${id}`;
-}
-
-export async function bulkSetProductStatus(ids: string[], status: "active" | "inactive"): Promise<number> {
-  if (!ids.length) return 0;
-  const sql = getPg();
-  if (!sql) {
-    const items = await getProducts();
-    let changed = 0;
-    const next = items.map((p) => {
-      if (ids.includes(p.id) && p.isActive !== (status === "active")) {
-        changed++;
-        return { ...p, isActive: status === "active" };
-      }
-      return p;
-    });
-    if (changed) await writeJson(productsPath, next);
-    return changed;
-  }
-  await ensureSchema(sql);
-  const rows = await sql`
-    UPDATE s_products
-    SET data = jsonb_set(data, '{isActive}', ${sqlJson(sql, status === "active")})
-    WHERE id = ANY(${ids}) AND (data->>'isActive')::boolean IS DISTINCT FROM ${status === "active"}
-    RETURNING id
-  `;
-  return rows.length;
 }
 
 // ==================== CATEGORIES ====================
@@ -264,149 +154,6 @@ export async function getCategoryBySlug(slug: string): Promise<Category | undefi
   return rows.length ? (rows[0].data as Category) : undefined;
 }
 
-export async function saveCategories(items: Category[]) {
-  const sql = getPg();
-  if (!sql) {
-    await writeJson(categoriesPath, items);
-    return;
-  }
-  await ensureSchema(sql);
-  for (const item of items) {
-    await sql`INSERT INTO s_categories (slug, data) VALUES (${item.slug}, ${sqlJson(sql, item)})
-      ON CONFLICT (slug) DO UPDATE SET data = EXCLUDED.data`;
-  }
-}
-
-// ==================== ORDERS ====================
-
-export async function getOrders(): Promise<Order[]> {
-  const sql = getPg();
-  if (!sql) return readJson<Order[]>(ordersPath, []);
-  await ensureSchema(sql);
-  const rows = await sql`SELECT data FROM s_orders ORDER BY created_at DESC, id ASC`;
-  return rows.map((row: any) => row.data as Order);
-}
-
-export async function getOrder(id: string): Promise<Order | undefined> {
-  const sql = getPg();
-  if (!sql) {
-    const orders = await getOrders();
-    return orders.find((order) => order.id === id);
-  }
-  await ensureSchema(sql);
-  const rows = await sql`SELECT data FROM s_orders WHERE id = ${id} LIMIT 1`;
-  return rows.length ? (rows[0].data as Order) : undefined;
-}
-
-export async function addOrder(order: Order): Promise<void> {
-  const sql = getPg();
-  if (!sql) {
-    const orders = await getOrders();
-    await writeJson(ordersPath, [order, ...orders]);
-    return;
-  }
-  await ensureSchema(sql);
-  await sql`INSERT INTO s_orders (id, created_at, data) VALUES (${order.id}, ${order.createdAt}, ${sqlJson(sql, order)})`;
-}
-
-export async function updateOrder(
-  id: string,
-  patch: Partial<Pick<Order, "status" | "trackingNumber" | "contact" | "shippingAddress" | "paymentProvider" | "paymentOrderId" | "paymentRefId" | "paymentSignature" | "paidAt">>
-): Promise<Order | null> {
-  const sql = getPg();
-  if (!sql) {
-    const orders = await getOrders();
-    const index = orders.findIndex((order) => order.id === id);
-    if (index === -1) return null;
-    orders[index] = { ...orders[index], ...patch };
-    await writeJson(ordersPath, orders);
-    return orders[index];
-  }
-  await ensureSchema(sql);
-  const rows = await sql`
-    UPDATE s_orders
-    SET data = data || ${sqlJson(sql, patch)}::jsonb
-    WHERE id = ${id}
-    RETURNING data
-  `;
-  return rows.length ? (rows[0].data as Order) : null;
-}
-
-// ==================== CUSTOMERS ====================
-
-export async function getCustomers(): Promise<Customer[]> {
-  const sql = getPg();
-  if (!sql) return readJson<Customer[]>(customersPath, []);
-  await ensureSchema(sql);
-  const rows = await sql`SELECT data FROM s_customers ORDER BY (data->>'createdAt') DESC`;
-  return rows.map((row: any) => row.data as Customer);
-}
-
-export async function getCustomerByEmail(email: string): Promise<Customer | undefined> {
-  const sql = getPg();
-  const target = email.trim().toLowerCase();
-  if (!sql) {
-    const all = await getCustomers();
-    return all.find((c) => c.email.toLowerCase() === target);
-  }
-  await ensureSchema(sql);
-  const rows = await sql`SELECT data FROM s_customers WHERE data->>'email' = ${target} LIMIT 1`;
-  return rows.length ? (rows[0].data as Customer) : undefined;
-}
-
-export async function getCustomerById(id: string): Promise<Customer | undefined> {
-  const sql = getPg();
-  if (!sql) {
-    const all = await getCustomers();
-    return all.find((c) => c.id === id);
-  }
-  await ensureSchema(sql);
-  const rows = await sql`SELECT data FROM s_customers WHERE id = ${id} LIMIT 1`;
-  return rows.length ? (rows[0].data as Customer) : undefined;
-}
-
-export async function createCustomer(input: {
-  name: string;
-  email: string;
-  googleId?: string;
-  passwordHash?: string;
-}): Promise<Customer> {
-  const customer: Customer = {
-    id: newId("cus-"),
-    name: input.name,
-    email: input.email,
-    googleId: input.googleId,
-    passwordHash: input.passwordHash,
-    createdAt: new Date().toISOString(),
-  };
-  const sql = getPg();
-  if (!sql) {
-    const all = await getCustomers();
-    await writeJson(customersPath, [customer, ...all]);
-    return customer;
-  }
-  await ensureSchema(sql);
-  await sql`INSERT INTO s_customers (id, data) VALUES (${customer.id}, ${sqlJson(sql, customer)})`;
-  return customer;
-}
-
-export async function updateCustomer(
-  id: string,
-  patch: Partial<Pick<Customer, "name" | "passwordHash" | "googleId">>
-): Promise<void> {
-  const sql = getPg();
-  if (!sql) {
-    const all = await getCustomers();
-    await writeJson(
-      customersPath,
-      all.map((c) => (c.id === id ? { ...c, ...patch } : c))
-    );
-    return;
-  }
-  await ensureSchema(sql);
-  await sql`UPDATE s_customers SET data = data || ${sqlJson(sql, patch)} WHERE id = ${id}`;
-}
-
 // ==================== SETTINGS ====================
 
 export async function getSettings(): Promise<Record<string, string>> {
@@ -434,17 +181,20 @@ export async function setSetting(key: string, value: string): Promise<void> {
     ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data`;
 }
 
-// ==================== UTILITIES ====================
+// ==================== STATS ====================
 
 export async function getStoreStats() {
   const sql = getPg();
   if (!sql) {
     const products = await getProducts();
     const categories = await getCategories();
-    const orders = await getOrders();
-    const customers = await getCustomers();
-    const downloads = orders.reduce((sum, o) => sum + o.items.filter(i => i.kind === "DIGITAL").length, 0);
-    return { products: products.length, categories: categories.length, freeProducts: products.filter(p => p.isFree).length, customers: customers.length, downloads };
+    return {
+      products: products.length,
+      categories: categories.length,
+      freeProducts: products.filter((p) => p.isFree).length,
+      customers: 0,
+      downloads: 0,
+    };
   }
   await ensureSchema(sql);
   const [productCount, categoryCount, freeProductCount, customerCount, downloadCount] = await Promise.all([
@@ -463,10 +213,7 @@ export async function getStoreStats() {
   };
 }
 
-export function newId(prefix: string) {
-  return `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-}
-
+/** Live Postgres size in bytes (Neon dashboard figure). 0 when offline/local. */
 export async function getNeonSizeBytes(): Promise<number> {
   const sql = getPg();
   if (!sql) return 0;

@@ -193,7 +193,7 @@ export function CouponManager({
                             <input type="hidden" name="id" value={c.id} />
                             <button
                               type="submit"
-                              className="rounded-md px-2.5 py-1.5 text-xs font-medium text-ink-500 hover:bg-red-50 hover:text-red-600"
+                              className="rounded-md bg-red-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-red-700"
                             >
                               Delete
                             </button>

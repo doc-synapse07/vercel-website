@@ -47,10 +47,10 @@ export function AdminShell({
           key={item.href}
           href={item.href}
           onClick={() => setOpen(false)}
-          className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+          className={`cut flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors ${
             isActive(item)
               ? "bg-brand-700 text-white"
-              : "text-ink-600 hover:bg-ink-100 hover:text-ink-900"
+              : "text-ink-600 hover:bg-brand-50 hover:text-brand-800"
           }`}
         >
           <item.icon size={17} />
@@ -68,14 +68,14 @@ export function AdminShell({
           <button
             type="button"
             onClick={() => setOpen((v) => !v)}
-            className="rounded-lg border border-ink-300 p-2 text-ink-700 lg:hidden"
+            className="cut border border-ink-300 p-2 text-ink-700 lg:hidden"
             aria-label="Toggle admin menu"
           >
             {open ? <X size={18} /> : <Menu size={18} />}
           </button>
 
           <Link href="/admin" className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-700 text-sm font-bold text-white">
+            <span className="cut flex h-8 w-8 items-center justify-center bg-gradient-to-br from-brand-400 via-brand-600 to-brand-800 text-sm font-bold text-white">
               S7
             </span>
             <span className="font-bold text-ink-900">Store admin</span>
@@ -84,7 +84,7 @@ export function AdminShell({
           <div className="ml-auto flex items-center gap-3">
             <Link
               href="/"
-              className="hidden items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-ink-600 hover:bg-ink-100 sm:inline-flex"
+              className="cut hidden items-center gap-1.5 px-3 py-2 text-sm font-medium text-ink-600 hover:bg-brand-50 hover:text-brand-800 sm:inline-flex"
             >
               View store <ExternalLink size={14} />
             </Link>
@@ -97,7 +97,7 @@ export function AdminShell({
             <form action={logoutAction}>
               <button
                 type="submit"
-                className="inline-flex items-center gap-1.5 rounded-lg border border-ink-300 px-3 py-2 text-sm font-medium text-ink-700 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+                className="cut inline-flex items-center gap-1.5 border border-ink-300 px-3 py-2 text-sm font-medium text-ink-700 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
               >
                 <LogOut size={15} />
                 <span className="hidden sm:inline">Sign out</span>

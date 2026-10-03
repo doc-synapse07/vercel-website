@@ -2,10 +2,11 @@ import type { Order } from "./types";
 
 function escapeHtml(value: string): string {
   return value
-    .replace(/&/g, "&")
-    .replace(/</g, "<")
-    .replace(/>/g, ">")
-    .replace(/"/g, "\"");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function formatINR(paise: number): string {
@@ -178,31 +179,4 @@ export function orderPackedEmail(order: Order) {
     ${itemsTable(order)}`;
 
   return shell(body);
-}
-
-export function adminOrderEmail(order: Order, baseUrl?: string) {
-  const base = baseUrl || process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
-  const isDigitalOnly = order.items.every((i) => i.kind === "DIGITAL");
-  const customer = `${escapeHtml(order.contact.name)}<br/>${escapeHtml(order.contact.phone)}<br/>${escapeHtml(order.contact.email)}`;
-  const shipping = order.shippingAddress
-    ? `${order.shippingAddress.line}, ${order.shippingAddress.city}, ${order.shippingAddress.state} - ${order.shippingAddress.pincode}, ${order.shippingAddress.country}`
-    : "";
-  const destination = isDigitalOnly
-    ? `<p style="margin:8px 0 0;color:#1e293b;font-size:14px;line-height:1.6">Digital download \u2014 no shipping required.</p>`
-    : `<p style="margin:8px 0 0;color:#1e293b;font-size:14px;line-height:1.6">${shipping}</p>`;
-  return shell(`
-    <h1 style="margin:0 0 8px;color:#1e293b;font-size:22px">\uD83D\uDD28 New order received</h1>
-    <p style="margin:0 0 20px;color:#64748b;font-size:14px;line-height:1.6">
-      Order <strong style="color:#0f766e">${order.orderNumber.toUpperCase()}</strong> just came in
-      for <strong style="color:#1e293b">${formatINR(order.totalPaise)}</strong>${isDigitalOnly ? " (digital)" : ""}.
-    </p>
-    ${itemsTable(order)}
-    <p style="margin:20px 0 8px;color:#64748b;font-size:12px;letter-spacing:1px">CUSTOMER</p>
-    <p style="margin:0;color:#1e293b;font-size:14px;line-height:1.6">${customer}</p>
-    <p style="margin:20px 0 8px;color:#64748b;font-size:12px;letter-spacing:1px">${isDigitalOnly ? "DELIVERY" : "SHIP TO"}</p>
-    ${destination}
-    <p style="margin:24px 0 0">
-      <a href="${base}/admin/orders" style="display:inline-block;background:#0f766e;color:#ffffff;padding:10px 18px;border-radius:4px;text-decoration:none;font-weight:bold;font-size:13px">Open admin orders</a>
-    </p>
-  `);
 }

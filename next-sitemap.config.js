@@ -9,7 +9,6 @@ module.exports = {
       { userAgent: "*", allow: "/" },
       { userAgent: "*", disallow: ["/admin/", "/api/", "/checkout/", "/cart", "/account"] },
     ],
-    additionalSitemaps: [`${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/sitemap-products.xml`],
   },
   sitemapSize: 5000,
   changefreq: "weekly",
@@ -27,23 +26,7 @@ module.exports = {
       alternateRefs: config.alternateRefs ?? [],
     };
   },
-  additionalPaths: async () => {
-    // Add product pages dynamically
-    const paths = [];
-    try {
-      const { getProducts } = await import("./src/lib/queries");
-      const { products } = await getProducts({ take: 1000 });
-      for (const product of products) {
-        paths.push({
-          loc: `/products/${product.slug}`,
-          changefreq: "weekly",
-          priority: 0.8,
-          lastmod: new Date().toISOString(),
-        });
-      }
-    } catch (e) {
-      console.warn("Could not fetch products for sitemap:", e);
-    }
-    return paths;
-  },
+  // NOTE: product/category pages are discovered automatically from the
+  // Next.js build manifest. The previous implementation imported TS source
+  // (./src/lib/queries) from this JS config, which breaks at build time.
 };

@@ -1,27 +1,23 @@
 import { unstable_cache } from "next/cache";
 import {
-  getProducts as getProductsRaw,
   getPublishedProducts,
   getProductBySlug as getProductBySlugRaw,
-  getFeaturedProducts as getFeaturedProductsRaw,
   getPopularProducts as getPopularProductsRaw,
   getRelatedProducts as getRelatedProductsRaw,
-  getProductsByCategory as getProductsByCategoryRaw,
   getCategories as getCategoriesRaw,
   getCategoryBySlug as getCategoryBySlugRaw,
-  getOrders,
-  getOrder,
-  getCustomers,
-  getCustomerByEmail,
-  getCustomerById,
   getSettings as getSettingsRaw,
   getStoreStats as getStoreStatsRaw,
 } from "./store";
-import { prisma } from "./db";
-import type { ProductCardData, CategoryNav, Product, Category, Order, Customer, Settings } from "./types";
-import { formatINR } from "./utils";
+import type { ProductCardData, CategoryNav, Product, Order, Customer, Settings } from "./types";
 
-function toCardData(p: Product): ProductCardData {
+function toCardData(p: Product, names?: Map<string, string>): ProductCardData {
+  const key = p.categorySlug;
+  // Defensive: rows migrated before the categorySlug fix store the Prisma
+  // category *id* (a cuid) instead of the slug. That must never render —
+  // show a generic label rather than leaking a database id onto cards.
+  const name =
+    names?.get(key) ?? (isCuidLike(key) ? "Exam notes" : humanizeSlug(key));
   return {
     id: p.id,
     slug: p.slug,
@@ -33,13 +29,27 @@ function toCardData(p: Product): ProductCardData {
     productType: p.productType,
     isFree: p.isFree,
     isFeatured: p.isFeatured,
-    category: { name: p.categorySlug, slug: p.categorySlug },
+    category: { name, slug: key },
     fileCount: p.files?.length ?? 0,
   };
 }
 
-function toCategoryNav(c: Category): CategoryNav {
-  return { name: c.name, slug: c.slug, productCount: c.productCount ?? 0 };
+/** Looks like a Prisma cuid, not a human-readable slug. */
+function isCuidLike(value: string): boolean {
+  return /^[a-z0-9]{20,}$/i.test(value) && /[0-9]/.test(value) && /[a-z]/i.test(value);
+}
+
+function humanizeSlug(slug: string): string {
+  const words = slug
+    .replace(/[-_]+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+  return words || "Exam notes";
+}
+
+async function categoryNameMap(): Promise<Map<string, string>> {
+  const cats = await getCategoriesRaw();
+  return new Map(cats.map((c) => [c.slug, c.name]));
 }
 
 // Cache tags for revalidation
@@ -50,26 +60,17 @@ export const CACHE_TAGS = {
   category: (slug: string) => `category:${slug}`,
 } as const;
 
-const CARD_SELECT = {
-  id: true,
-  slug: true,
-  title: true,
-  shortDescription: true,
-  pricePaise: true,
-  mrpPaise: true,
-  coverImage: true,
-  productType: true,
-  isFree: true,
-  isFeatured: true,
-  category: { select: { name: true, slug: true } },
-  _count: { select: { files: true } },
-} as const;
-
 // Cached queries with tags
 export const getCategories = unstable_cache(
   async (): Promise<CategoryNav[]> => {
-    const items = await getCategoriesRaw();
-    return items.map(toCategoryNav);
+    const [items, products] = await Promise.all([getCategoriesRaw(), getPublishedProducts()]);
+    const counts = new Map<string, number>();
+    for (const p of products) counts.set(p.categorySlug, (counts.get(p.categorySlug) ?? 0) + 1);
+    return items.map((c) => ({
+      name: c.name,
+      slug: c.slug,
+      productCount: counts.get(c.slug) ?? 0,
+    }));
   },
   ["categories"],
   { tags: [CACHE_TAGS.categories], revalidate: 3600 }
@@ -96,7 +97,8 @@ export type ProductListOptions = {
 };
 
 export async function getProducts(opts: ProductListOptions = {}): Promise<{ products: ProductCardData[]; total: number }> {
-  let items = await getPublishedProducts();
+  const [items0, names] = await Promise.all([getPublishedProducts(), categoryNameMap()]);
+  let items = items0;
 
   if (opts.categorySlug) items = items.filter((p) => p.categorySlug === opts.categorySlug);
   if (opts.featuredOnly) items = items.filter((p) => p.isFeatured);
@@ -124,19 +126,22 @@ export async function getProducts(opts: ProductListOptions = {}): Promise<{ prod
   if (opts.skip) items = items.slice(opts.skip);
   if (opts.take) items = items.slice(0, opts.take);
 
-  return { products: items.map(toCardData), total };
+  return { products: items.map((p) => toCardData(p, names)), total };
 }
 
 export async function getProductBySlug(slug: string) {
   return unstable_cache(
     async () => {
-      const product = await getProductBySlugRaw(slug);
+      const [product, names] = await Promise.all([getProductBySlugRaw(slug), categoryNameMap()]);
       if (!product) return null;
       return {
         ...product,
         pricePaise: product.pricePaise,
         mrpPaise: product.mrpPaise,
-        category: { name: product.categorySlug, slug: product.categorySlug },
+        category: {
+          name: names.get(product.categorySlug) ?? humanizeSlug(product.categorySlug),
+          slug: product.categorySlug,
+        },
         files: product.files,
       };
     },
@@ -145,20 +150,10 @@ export async function getProductBySlug(slug: string) {
   )();
 }
 
-export async function getFeaturedProducts(take = 8): Promise<ProductCardData[]> {
-  const items = await getFeaturedProductsRaw(take);
-  return items.map(toCardData);
-}
-
 /** Products sorted by popularity (featured first, then newest) */
 export async function getPopularProducts(take = 4): Promise<ProductCardData[]> {
-  const items = await getPopularProductsRaw(take);
-  return items.map(toCardData);
-}
-
-export async function getProductsByCategory(categorySlug: string): Promise<ProductCardData[]> {
-  const items = await getProductsByCategoryRaw(categorySlug);
-  return items.map(toCardData);
+  const [items, names] = await Promise.all([getPopularProductsRaw(take), categoryNameMap()]);
+  return items.map((p) => toCardData(p, names));
 }
 
 export async function getRelatedProducts(
@@ -166,16 +161,11 @@ export async function getRelatedProducts(
   categorySlug: string,
   take = 4,
 ): Promise<ProductCardData[]> {
-  const items = await getRelatedProductsRaw(productId, categorySlug, take);
-  return items.map(toCardData);
-}
-
-export async function getActiveCouponCodes(): Promise<string[]> {
-  const rows = await prisma.coupon.findMany({
-    where: { isActive: true },
-    select: { code: true },
-  });
-  return rows.map((r) => r.code);
+  const [items, names] = await Promise.all([
+    getRelatedProductsRaw(productId, categorySlug, take),
+    categoryNameMap(),
+  ]);
+  return items.map((p) => toCardData(p, names));
 }
 
 export async function getStoreStats() {
@@ -200,11 +190,10 @@ export async function getSettings(): Promise<Settings> {
     youtubeUrl: raw.youtubeUrl || "",
     telegramUrl: raw.telegramUrl || "",
     whatsappUrl: raw.whatsappUrl || "",
-    aboutText: raw.aboutText || "",
     heroTitle: raw.heroTitle || "Learn Smart. Revise Fast.",
     heroSubtitle: raw.heroSubtitle || "Crack Exams.",
     upiId: raw.upiId || "",
   };
 }
 
-export type { ProductCardData, CategoryNav, Product, Category, Order, Customer, Settings };
+export type { ProductCardData, CategoryNav, Product, Order, Customer, Settings };

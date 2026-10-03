@@ -5,7 +5,16 @@ import { getCurrentAdmin } from "@/lib/auth";
 import { formatINR, formatDate } from "@/lib/utils";
 import { isSmtpConfigured } from "@/lib/mail";
 import { getAvailableProviders, isLiveMode } from "@/lib/payments";
-import { getStorageDriver } from "@/lib/storage";
+import { getStorageDriver, getR2Stats } from "@/lib/storage";
+import { getNeonSizeBytes } from "@/lib/store";
+import {
+  getR2MonthlyOps,
+  R2_CLASS_A_CAP,
+  R2_CLASS_B_CAP,
+  R2_STORAGE_CAP_BYTES,
+  NEON_STORAGE_CAP_BYTES,
+  type R2MonthlyOps,
+} from "@/lib/r2-usage";
 import { StatCard } from "./StatCard";
 import { StatusBadge } from "./StatusBadge";
 import {
@@ -41,6 +50,9 @@ export default async function AdminDashboardPage() {
     digitalWithoutFiles,
     revenueRecentAgg,
     ordersRecent,
+    neonSizeBytes,
+    r2Stats,
+    r2Ops,
   ] = await Promise.all([
     prisma.product.count(),
     prisma.product.count({ where: { isActive: true } }),
@@ -72,6 +84,9 @@ export default async function AdminDashboardPage() {
       _sum: { totalPaise: true },
     }),
     prisma.order.count({ where: { createdAt: { gte: thirtyDaysAgo } } }),
+    getNeonSizeBytes(),
+    getR2Stats(),
+    getR2MonthlyOps(),
   ]);
 
   const providers = getAvailableProviders();
@@ -182,6 +197,75 @@ export default async function AdminDashboardPage() {
         />
       </div>
 
+      {/* ------------------------------------------------- infrastructure usage */}
+      <section className="mb-6">
+        <h2 className="mb-3 text-base font-semibold text-ink-900">Infrastructure usage</h2>
+        <div className="grid gap-4 md:grid-cols-2">
+          <StorageCard
+            label="Neon database"
+            usedBytes={neonSizeBytes}
+            capBytes={NEON_STORAGE_CAP_BYTES}
+            caption="Postgres storage · 0.5 GB free tier"
+            emptyText="Local JSON mode — no Postgres connected"
+            accentClass="bg-sky-500"
+          />
+          <StorageCard
+            label="Cloudflare R2"
+            usedBytes={r2Stats.totalBytes}
+            capBytes={R2_STORAGE_CAP_BYTES}
+            caption={`${r2Stats.objectCount.toLocaleString("en-IN")} files · PDFs + covers`}
+            emptyText="R2 not configured — uploads disabled"
+            accentClass="bg-brand-600"
+            ops={r2Ops}
+          />
+        </div>
+
+        <div className="mt-4 rounded-card border border-ink-200 bg-white">
+          <div className="border-b border-ink-200 px-5 py-3.5">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-500">
+              Service dashboards
+            </p>
+            <p className="mt-0.5 text-xs text-ink-500">
+              Quick links to the database and storage consoles behind this store.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2">
+            <a
+              href="https://console.neon.tech"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center justify-between gap-3 px-5 py-3.5 transition-colors hover:bg-ink-50"
+            >
+              <div>
+                <p className="text-sm font-bold text-ink-900">Neon dashboard</p>
+                <p className="mt-0.5 text-xs text-ink-500">
+                  console.neon.tech — Postgres database, SQL editor, storage
+                </p>
+              </div>
+              <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700 opacity-60 transition-opacity group-hover:opacity-100">
+                Open ↗
+              </span>
+            </a>
+            <a
+              href="https://dash.cloudflare.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group flex items-center justify-between gap-3 border-t border-ink-200 px-5 py-3.5 transition-colors hover:bg-ink-50 sm:border-l sm:border-t-0"
+            >
+              <div>
+                <p className="text-sm font-bold text-ink-900">Cloudflare dashboard</p>
+                <p className="mt-0.5 text-xs text-ink-500">
+                  dash.cloudflare.com — R2 bucket, uploads, downloads
+                </p>
+              </div>
+              <span className="shrink-0 text-[11px] font-bold uppercase tracking-[0.12em] text-brand-700 opacity-60 transition-opacity group-hover:opacity-100">
+                Open ↗
+              </span>
+            </a>
+          </div>
+        </div>
+      </section>
+
       {/* -------------------------------------------------------- setup panel */}
       <section className="mb-6 rounded-card border border-ink-200 bg-white p-5">
         <h2 className="mb-3 text-base font-semibold text-ink-900">Store configuration</h2>
@@ -265,6 +349,95 @@ export default async function AdminDashboardPage() {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function formatSize(bytes: number): string {
+  if (bytes >= 1024 * 1024 * 1024) return `${(bytes / 1024 ** 3).toFixed(2)} GB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function StorageCard({
+  label,
+  usedBytes,
+  capBytes,
+  caption,
+  emptyText,
+  accentClass,
+  ops,
+}: {
+  label: string;
+  usedBytes: number;
+  capBytes: number;
+  caption: string;
+  emptyText: string;
+  accentClass: string;
+  ops?: R2MonthlyOps | null;
+}) {
+  const percent = usedBytes > 0 ? Math.min(100, (usedBytes / capBytes) * 100) : 0;
+  return (
+    <div className="relative overflow-hidden rounded-card border border-ink-200 bg-white p-5">
+      <span className={`absolute inset-x-0 top-0 h-0.5 ${accentClass}`} />
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-ink-500">{label}</p>
+        <p className="text-right text-[11px] uppercase tracking-wide text-ink-400">{caption}</p>
+      </div>
+      {usedBytes === 0 ? (
+        <p className="mt-3 text-lg font-extrabold text-ink-400">{emptyText}</p>
+      ) : (
+        <>
+          <p className="mt-3 text-3xl font-extrabold tracking-tight text-ink-900">
+            {formatSize(usedBytes)}{" "}
+            <span className="text-sm font-semibold text-ink-400">/ {formatSize(capBytes)}</span>
+          </p>
+          <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-ink-100">
+            <div className={`h-full rounded-full transition-all ${accentClass}`} style={{ width: `${percent}%` }} />
+          </div>
+          <p className="mt-2 text-xs font-medium text-ink-500">{percent.toFixed(1)}% used</p>
+          {ops ? (
+            <div className="mt-4 border-t border-ink-100 pt-3">
+              <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-ink-500">
+                {ops.monthLabel} cycle · free tier
+              </p>
+              <OpsRow label="Writes (Class A)" used={ops.writes} cap={R2_CLASS_A_CAP} accentClass={accentClass} />
+              <OpsRow label="Reads (Class B)" used={ops.reads} cap={R2_CLASS_B_CAP} accentClass={accentClass} />
+            </div>
+          ) : label === "Cloudflare R2" ? (
+            <p className="mt-3 text-xs leading-relaxed text-ink-500">
+              Monthly uploads/downloads need a <span className="font-mono">CLOUDFLARE_API_TOKEN</span> —
+              see Cloudflare dashboard.
+            </p>
+          ) : null}
+        </>
+      )}
+    </div>
+  );
+}
+
+function OpsRow({
+  label,
+  used,
+  cap,
+  accentClass,
+}: {
+  label: string;
+  used: number;
+  cap: number;
+  accentClass: string;
+}) {
+  const percent = used > 0 ? Math.min(100, (used / cap) * 100) : 0;
+  return (
+    <div className="mt-2">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-xs text-ink-600">{label}</p>
+        <p className="font-mono text-[11px] text-ink-900">
+          {used.toLocaleString("en-IN")} <span className="text-ink-400">/ {(cap / 1_000_000).toFixed(0)}M</span>
+        </p>
+      </div>
+      <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-ink-100">
+        <div className={`h-full rounded-full ${accentClass}`} style={{ width: `${percent}%` }} />
+      </div>
     </div>
   );
 }

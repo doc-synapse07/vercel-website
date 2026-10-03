@@ -15,8 +15,6 @@ export const DEFAULT_SETTINGS = {
   youtubeSubscribers: "",
   telegramUrl: "",
   whatsappUrl: "",
-  aboutText:
-    "Curated exam-preparation notes for UPSC CMS, NEET PG, INICET, FMGE, NORCET and state medical officer exams.",
   heroTitle: "Learn Smart. Revise Fast.",
   heroSubtitle: "Crack Exams.",
   upiId: "",

@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   Info,
   Plus,
+  X,
 } from "lucide-react";
 import {
   createProductAction,
@@ -22,6 +23,7 @@ import {
 } from "@/app/admin/actions/products";
 import { formatBytes } from "@/lib/utils";
 import { VariantManager } from "@/components/VariantManager";
+import { DescriptionEditor } from "./DescriptionEditor";
 
 export type CategoryOption = { id: string; name: string };
 
@@ -67,6 +69,52 @@ export function ProductForm({
   const [productType, setProductType] = useState(product?.productType ?? "DIGITAL");
   const [isFree, setIsFree] = useState(product?.isFree ?? false);
   const [replaceFiles, setReplaceFiles] = useState(false);
+  const [removeCover, setRemoveCover] = useState(false);
+
+  // New-upload staging: drag-and-drop + per-file remove, backed by the real
+  // <input type="file"> so the server action flow is unchanged.
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingFiles, setPendingFiles] = useState<{ name: string; size: number }[]>([]);
+  const [dragOver, setDragOver] = useState(false);
+
+  function syncPending(input: HTMLInputElement | null) {
+    if (!input?.files) {
+      setPendingFiles([]);
+      return;
+    }
+    setPendingFiles(Array.from(input.files).map((f) => ({ name: f.name, size: f.size })));
+  }
+
+  function removePending(index: number) {
+    const input = fileInputRef.current;
+    if (!input?.files) return;
+    const dt = new DataTransfer();
+    Array.from(input.files).forEach((f, i) => {
+      if (i !== index) dt.items.add(f);
+    });
+    input.files = dt.files;
+    syncPending(input);
+  }
+
+  function isPdf(f: File) {
+    return f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+  }
+
+  function onDropFiles(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const input = fileInputRef.current;
+    if (!input) return;
+    const dt = new DataTransfer();
+    if (input.files) Array.from(input.files).forEach((f) => dt.items.add(f));
+    Array.from(e.dataTransfer.files)
+      .filter(isPdf)
+      .forEach((f) => dt.items.add(f));
+    input.files = dt.files;
+    syncPending(input);
+  }
+
+  const pendingBytes = pendingFiles.reduce((sum, f) => sum + f.size, 0);
 
   const inputCls =
     "w-full rounded-lg border border-ink-300 px-3.5 py-2.5 text-sm outline-none transition-colors focus:border-brand-500 focus:ring-4 focus:ring-brand-100";
@@ -122,19 +170,13 @@ export function ProductForm({
           </div>
 
           <div className="sm:col-span-2">
-            <label htmlFor="description" className={labelCls}>
-              Full description (HTML allowed)
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              rows={8}
-              defaultValue={product?.description ?? ""}
-              placeholder="<p>What&apos;s inside:</p><ul><li>…</li></ul>"
-              className={`${inputCls} font-mono text-[13px]`}
-            />
+            <span id="description-label" className={labelCls}>
+              Full description
+            </span>
+            <DescriptionEditor defaultValue={product?.description ?? ""} />
             <p className="mt-1.5 text-xs text-ink-500">
-              Rendered on the product page. Basic HTML (p, ul, ol, strong, em, a) is supported.
+              Shown on the product page. Select any text and use the toolbar above for
+              bold, italic, headings, bullet points and links — no HTML needed.
             </p>
           </div>
 
@@ -290,42 +332,79 @@ export function ProductForm({
         </p>
 
         {product?.coverImage && (
-          <div className="mb-4 flex items-center gap-4">
-            <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-ink-100">
+          <div className="mb-4">
+            <input type="hidden" name="removeCover" value={removeCover ? "on" : ""} />
+            <div
+              className={`relative h-28 w-[84px] overflow-hidden rounded-lg border bg-white transition-opacity ${
+                removeCover ? "border-red-300 opacity-40 grayscale" : "border-ink-200"
+              }`}
+            >
               <Image
                 src={product.coverImage}
-                alt=""
+                alt="Current cover"
                 fill
-                sizes="96px"
-                className="object-cover"
+                sizes="84px"
+                className="object-contain"
               />
             </div>
-            <label className="flex items-center gap-2 text-sm font-medium text-ink-700">
-              <input
-                type="checkbox"
-                name="removeCover"
-                className="h-4 w-4 rounded accent-red-600"
-              />
-              Remove this cover
-            </label>
+            <button
+              type="button"
+              onClick={() => setRemoveCover((v) => !v)}
+              className={`mt-2 inline-flex items-center gap-1.5 text-xs font-semibold transition-colors ${
+                removeCover
+                  ? "text-ink-500 hover:text-ink-800"
+                  : "text-red-600 hover:text-red-700"
+              }`}
+            >
+              <Trash2 size={13} />
+              {removeCover ? "Keep cover (undo)" : "Delete cover"}
+            </button>
+            {removeCover && (
+              <p className="mt-1 text-xs text-red-600">Will be removed when you save.</p>
+            )}
           </div>
         )}
 
+        <label
+          htmlFor="coverFile"
+          className="flex cursor-pointer items-center gap-3 rounded-lg border border-dashed border-ink-300 p-4 text-sm text-ink-600 transition-colors hover:border-brand-400 hover:bg-brand-50/40"
+        >
+          <span className="btn btn-primary btn-sm pointer-events-none">Choose file</span>
+          <span id="coverFileName" className="truncate">No cover chosen</span>
+        </label>
         <input
+          id="coverFile"
           type="file"
           name="coverFile"
           accept="image/png,image/jpeg,image/webp"
-          className="block w-full cursor-pointer rounded-lg border border-dashed border-ink-300 p-4 text-sm text-ink-600 file:mr-3 file:rounded-md file:border-0 file:bg-brand-700 file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white hover:border-brand-400"
+          onChange={(e) => {
+            const el = document.getElementById("coverFileName");
+            if (el) el.textContent = e.target.files?.[0]?.name ?? "No cover chosen";
+          }}
+          className="sr-only"
         />
       </section>
 
       {/* -------------------------------------------------------------- files */}
       {productType === "DIGITAL" && (
         <section className="rounded-card border border-ink-200 bg-white p-5">
-          <h2 className="mb-1 text-base font-semibold text-ink-900">PDF files</h2>
+          <div className="mb-1 flex items-center gap-2.5">
+            <h2 className="text-base font-semibold text-ink-900">PDF files</h2>
+            {product && product.files.length > 0 && (
+              <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-bold text-brand-800">
+                {product.files.length} attached
+              </span>
+            )}
+            {pendingFiles.length > 0 && (
+              <span className="rounded-full bg-brand-700 px-2.5 py-0.5 text-xs font-bold text-white">
+                +{pendingFiles.length} new
+              </span>
+            )}
+          </div>
           <p className="mb-4 text-xs text-ink-500">
             Select one PDF for a single product, or several for a bundle. Every file is emailed
-            as its own download link.
+            as its own download link. Stored in{" "}
+            {storageDriver === "r2" ? "Cloudflare R2" : "./storage (local)"}.
           </p>
 
           {product && product.files.length > 0 && (
@@ -382,20 +461,96 @@ export function ProductForm({
             </p>
           )}
 
-          <div className="rounded-lg border-2 border-dashed border-ink-300 p-6 text-center">
-            <Upload size={22} className="mx-auto mb-2 text-ink-400" />
-            <p className="mb-3 text-sm text-ink-600">
-              Choose PDF{isEdit && product && product.files.length > 0 ? "s to add" : "(s)"}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => fileInputRef.current?.click()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") fileInputRef.current?.click();
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={onDropFiles}
+            className={`cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+              dragOver
+                ? "border-brand-500 bg-brand-50"
+                : "border-ink-300 hover:border-brand-400 hover:bg-brand-50/40"
+            }`}
+          >
+            <Upload
+              size={22}
+              className={`mx-auto mb-2 ${dragOver ? "text-brand-600" : "text-ink-400"}`}
+            />
+            <p className="mb-1 text-sm font-medium text-ink-700">
+              {dragOver
+                ? "Drop PDFs here"
+                : "Drag PDFs here or click to browse"}
+            </p>
+            <p className="text-xs text-ink-500">
+              {isEdit && product && product.files.length > 0 && !replaceFiles
+                ? "New files will be added to the existing bundle"
+                : "One PDF for a single product, several for a bundle"}{" "}
+              · PDF only · up to 200 MB each
             </p>
             <input
+              ref={fileInputRef}
               type="file"
               name="files"
               accept="application/pdf,.pdf"
               multiple
-              className="block w-full cursor-pointer text-sm text-ink-600 file:mr-3 file:rounded-md file:border-0 file:bg-brand-700 file:px-3.5 file:py-2 file:text-sm file:font-semibold file:text-white"
+              onChange={(e) => syncPending(e.target)}
+              className="sr-only"
             />
-            <p className="mt-2.5 text-xs text-ink-500">PDF only · up to 200 MB each</p>
           </div>
+
+          {pendingFiles.length > 0 && (
+            <div className="mt-4">
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-sm font-medium text-ink-700">
+                  {pendingFiles.length} file{pendingFiles.length === 1 ? "" : "s"} ready to
+                  upload · {formatBytes(pendingBytes)}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (fileInputRef.current) fileInputRef.current.value = "";
+                    setPendingFiles([]);
+                  }}
+                  className="text-xs font-medium text-ink-500 hover:text-red-600"
+                >
+                  Clear all
+                </button>
+              </div>
+              <ul className="flex flex-col gap-2">
+                {pendingFiles.map((f, i) => (
+                  <li
+                    key={`${f.name}-${i}`}
+                    className="flex items-center gap-3 rounded-lg border border-brand-200 bg-brand-50/50 px-3 py-2"
+                  >
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-700 text-white">
+                      <FileText size={15} />
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink-900">
+                      {f.name}
+                    </span>
+                    <span className="shrink-0 text-xs text-ink-500">{formatBytes(f.size)}</span>
+                    <button
+                      type="button"
+                      title={`Remove ${f.name}`}
+                      aria-label={`Remove ${f.name}`}
+                      onClick={() => removePending(i)}
+                      className="shrink-0 rounded-md p-1.5 text-ink-500 hover:bg-red-50 hover:text-red-600"
+                    >
+                      <X size={15} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </section>
       )}
 

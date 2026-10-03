@@ -136,17 +136,3 @@ export async function releaseRedemption(params: { couponId: string; orderId: str
     }
   });
 }
-
-export function describeCoupon(c: {
-  discountType: string;
-  discountValue: number;
-  maxDiscountPaise: number | null;
-}) {
-  if (c.discountType === "PERCENT") {
-    const cap = c.maxDiscountPaise
-      ? ` (up to ₹${Math.round(c.maxDiscountPaise / 100).toLocaleString("en-IN")})`
-      : "";
-    return `${c.discountValue}% off${cap}`;
-  }
-  return `₹${Math.round(c.discountValue / 100).toLocaleString("en-IN")} off`;
-}

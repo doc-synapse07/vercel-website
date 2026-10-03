@@ -3,6 +3,7 @@ import { ProductCard } from "@/components/ProductCard";
 import { getCategories, getPopularProducts, getStoreStats } from "@/lib/queries";
 import { getSettings } from "@/lib/settings";
 import { getSocialStats } from "@/lib/social-stats";
+import { formatCompact } from "@/components/StatsMatrix";
 import {
   ArrowRight,
   FileText,
@@ -57,8 +58,15 @@ export default async function HomePage() {
     getPopularProducts(4),
   ]);
 
-  const community = [
-    {
+  const waDigits = settings.supportPhone.replace(/\D/g, "");
+  const waCollab =
+    waDigits.length >= 10
+      ? `https://wa.me/${waDigits}?text=${encodeURIComponent(
+          "Hi SYNAPSE.07! I want to discuss a brand collaboration. Please share details and pricing."
+        )}`
+      : null;
+
+  const community = [    {
       href: settings.telegramUrl,
       icon: Send,
       title: "Join Telegram group",
@@ -75,8 +83,8 @@ export default async function HomePage() {
   const statItems = [
     { key: "products", value: stats.products, label: "PDF products", icon: FileText, iconBg: "bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300" },
     { key: "categories", value: stats.categories, label: "Exam categories", icon: FileText, iconBg: "bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300" },
-    { key: "youtube", value: social.youtubeSubscribers ?? "450+", label: "YouTube subscribers", icon: Youtube, iconBg: "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400", href: settings.youtubeUrl },
-    { key: "instagram", value: social.instagramFollowers ?? "57.8k", label: "Instagram followers", icon: Instagram, iconBg: "bg-pink-50 text-pink-600 dark:bg-pink-950/30 dark:text-pink-400", href: settings.instagramUrl },
+    { key: "youtube", value: formatCompact(social.youtubeSubscribers) || "450+", label: "YouTube subscribers", icon: Youtube, iconBg: "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400", href: settings.youtubeUrl },
+    { key: "instagram", value: formatCompact(social.instagramFollowers) || "57.8K", label: "Instagram followers", icon: Instagram, iconBg: "bg-pink-50 text-pink-600 dark:bg-pink-950/30 dark:text-pink-400", href: settings.instagramUrl },
     { key: "telegram", value: "Join", label: "Telegram group", icon: Send, iconBg: "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400", href: settings.telegramUrl },
     { key: "whatsapp", value: "Join", label: "WhatsApp channel", icon: MessageSquare, iconBg: "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400", href: settings.whatsappUrl },
   ];
@@ -353,16 +361,26 @@ export default async function HomePage() {
             <div className="max-w-2xl">
               <Eyebrow>Brand collaboration</Eyebrow>
               <h2 className="mb-3 max-w-2xl text-2xl font-bold tracking-tight text-ink-900 dark:text-white sm:text-3xl lg:text-4xl">
-                Partner with us
+                Let&apos;s create something great together
               </h2>
               <p className="max-w-2xl text-sm leading-relaxed text-ink-600 dark:text-ink-300 sm:text-base">
-                We create review videos, demos and promos for physical products, courses and digital products — published to an audience of medical aspirants who buy study material. Feature your product with honest content that drives sales.
+                We are content creators. If you are a brand and want to promote
+                your product, connect with us — we will plan the content together
+                (reels, stories, videos), agree one fixed package price, and you pay
+                us only for the content we create for you.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row justify-center lg:justify-end gap-2.5 w-full">
-              <Link href="/contact" className="btn btn-primary btn-md w-full sm:w-auto">
-                Start collaboration <ArrowRight size={15} />
-              </Link>
+              {waCollab && (
+                <a
+                  href={waCollab}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary btn-md w-full sm:w-auto"
+                >
+                  <MessageCircle size={15} /> WhatsApp us
+                </a>
+              )}
               <Link href="/services" className="btn btn-outline btn-md w-full sm:w-auto">
                 Our services
               </Link>

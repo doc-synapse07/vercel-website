@@ -115,14 +115,10 @@ export default async function AdminOrdersPage({
           />
         </form>
 
-        <div className="flex gap-2 overflow-x-auto pb-1">
+        <div className="flex flex-wrap justify-center gap-2">
           <Link
             href={buildUrl({ status: undefined })}
-            className={`shrink-0 rounded-lg border px-3.5 py-2 text-sm font-medium ${
-              !status
-                ? "border-brand-700 bg-brand-700 text-white"
-                : "border-ink-300 bg-white text-ink-600 hover:border-brand-400"
-            }`}
+            className={`btn btn-sm ${!status ? "btn-primary" : "btn-outline"}`}
           >
             All
           </Link>
@@ -130,11 +126,7 @@ export default async function AdminOrdersPage({
             <Link
               key={s}
               href={buildUrl({ status: s })}
-              className={`shrink-0 rounded-lg border px-3.5 py-2 text-sm font-medium ${
-                status === s
-                  ? "border-brand-700 bg-brand-700 text-white"
-                  : "border-ink-300 bg-white text-ink-600 hover:border-brand-400"
-              }`}
+              className={`btn btn-sm ${status === s ? "btn-primary" : "btn-outline"}`}
             >
               {STATUS_COPY[s]}
             </Link>
@@ -222,11 +214,7 @@ export default async function AdminOrdersPage({
             <Link
               key={n}
               href={buildUrl({ page: n === 1 ? undefined : n })}
-              className={`flex h-9 min-w-9 items-center justify-center rounded-lg border px-3 text-sm font-medium ${
-                n === page
-                  ? "border-brand-700 bg-brand-700 text-white"
-                  : "border-ink-300 bg-white text-ink-600 hover:border-brand-400"
-              }`}
+              className={`btn btn-sm min-w-10 ${n === page ? "btn-primary" : "btn-outline"}`}
             >
               {n}
             </Link>

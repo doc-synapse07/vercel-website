@@ -1,12 +1,10 @@
-// Synapse.07 — store database schema
-// Currently SQLite for local dev. To move to Postgres (Vercel):
-//   1. Change provider to "postgresql"
-//   2. Set DATABASE_URL to your hosted Postgres connection string
-//   3. npx prisma db push
-// No application code changes required.
+// Synapse.07 — store database schema (Postgres / Neon).
 //
-// NOTE: SQLite does not support native enums, so enum-like fields are
-// String columns validated in code via src/lib/constants.ts
+// Prisma is the transactional source of truth (orders, coupons, customers,
+// download grants, admin users). The storefront catalogue read layer
+// (src/lib/store.ts, surfaced via src/lib/queries.ts) reads from the same
+// Postgres database.
+// Enum-like fields are String columns validated in code via src/lib/constants.ts
 
 generator client {
   provider = "prisma-client-js"
