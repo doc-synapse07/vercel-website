@@ -55,15 +55,19 @@ for (const t of tests) {
   if (!t.id || !Array.isArray(t.questions) || t.questions.length === 0) {
     throw new Error(`Test missing id/questions: ${JSON.stringify(t).slice(0, 120)}`);
   }
-  for (const q of t.questions) {
-    if (!q.id || !q.text || !Array.isArray(q.options) || q.options.length === 0) {
-      throw new Error(`Bad question in test ${t.id}: ${JSON.stringify(q).slice(0, 160)}`);
+  t.questions = t.questions.filter((q) => {
+    const okShape = q.id && q.text && Array.isArray(q.options) && q.options.length > 0;
+    const okAnswer = okShape && (q.options.some((o) => o.correct) || q.correct_answer);
+    if (!okAnswer) {
+      console.warn(`  SKIP bad question in test ${t.id}: ${JSON.stringify(q).slice(0, 160)}`);
     }
-    if (!q.options.some((o) => o.correct) && !q.correct_answer) {
-      throw new Error(`Question ${q.id} has no correct marker`);
-    }
+    return okAnswer;
+  });
+  if (t.questions.length === 0) {
+    console.warn(`  SKIP test ${t.id}: no valid questions left`);
+    continue;
   }
-  const numQ = t.num_questions || t.questions.length;
+  const numQ = t.questions.length;
   const totalMarks = t.total_marks || numQ * 4;
   const duration = t.duration || Math.ceil(numQ + 10);
   const clean = {

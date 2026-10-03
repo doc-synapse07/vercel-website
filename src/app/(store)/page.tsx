@@ -91,10 +91,10 @@ export default async function HomePage() {
   ].filter((c) => c.href.trim().length > 0);
 
   const statItems = [
+    { key: "instagram", value: formatCompact(social.instagramFollowers) || "57.8K", label: "Instagram followers", icon: Instagram, iconBg: "bg-pink-50 text-pink-600 dark:bg-pink-950/30 dark:text-pink-400", href: settings.instagramUrl },
+    { key: "youtube", value: formatCompact(social.youtubeSubscribers) || "450+", label: "YouTube subscribers", icon: Youtube, iconBg: "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400", href: settings.youtubeUrl },
     { key: "products", value: stats.products, label: "PDF products", icon: FileText, iconBg: "bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300" },
     { key: "categories", value: stats.categories, label: "Exam categories", icon: FileText, iconBg: "bg-brand-50 text-brand-700 dark:bg-brand-950 dark:text-brand-300" },
-    { key: "youtube", value: formatCompact(social.youtubeSubscribers) || "450+", label: "YouTube subscribers", icon: Youtube, iconBg: "bg-red-50 text-red-600 dark:bg-red-950/30 dark:text-red-400", href: settings.youtubeUrl },
-    { key: "instagram", value: formatCompact(social.instagramFollowers) || "57.8K", label: "Instagram followers", icon: Instagram, iconBg: "bg-pink-50 text-pink-600 dark:bg-pink-950/30 dark:text-pink-400", href: settings.instagramUrl },
     { key: "telegram", value: "Join", label: "Telegram group", icon: Send, iconBg: "bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400", href: settings.telegramUrl },
     { key: "whatsapp", value: "Join", label: "WhatsApp channel", icon: MessageSquare, iconBg: "bg-green-50 text-green-600 dark:bg-green-950/30 dark:text-green-400", href: settings.whatsappUrl },
   ];
@@ -190,7 +190,7 @@ export default async function HomePage() {
         <div className="mx-auto max-w-6xl px-4 py-8">
           <Eyebrow>The numbers</Eyebrow>
           <h2 className="text-2xl font-bold tracking-tight text-ink-900 dark:text-white sm:text-3xl">
-            Community & output
+            Community & Output
           </h2>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 gap-y-4">
             {statItems.map((item) => {
