@@ -45,12 +45,18 @@ export function prettyTestTitle(raw: string): string {
     btr: "BTR",
     gt: "GT",
     inicet: "INI-CET",
+    ini: "INI",
+    cet: "CET",
+    pg: "PG",
     neet: "NEET",
+    neetpg: "NEET PG",
     obg: "OBG",
     psm: "PSM",
     ent: "ENT",
     fmt: "FMT",
+    fm: "FM",
     ophthal: "Ophthal",
+    optha: "Optha",
     radio: "Radio",
     ortho: "Ortho",
     surgery: "Surgery",
@@ -60,6 +66,7 @@ export function prettyTestTitle(raw: string): string {
     respi: "Respi",
     renal: "Renal",
     gi: "GI",
+    git: "GIT",
     cvs: "CVS",
     hemat: "Hemat",
     neuro: "Neuro",
@@ -68,6 +75,32 @@ export function prettyTestTitle(raw: string): string {
     integrated: "Integrated",
     online: "Online",
     mock: "Mock",
+    aiims: "AIIMS",
+    fmge: "FMGE",
+    upsc: "UPSC",
+    cms: "CMS",
+    nov: "Nov",
+    may: "May",
+    jan: "Jan",
+    feb: "Feb",
+    mar: "Mar",
+    apr: "Apr",
+    jun: "Jun",
+    jul: "Jul",
+    aug: "Aug",
+    sep: "Sep",
+    oct: "Oct",
+    dec: "Dec",
+    ct: "CT",
+    mri: "MRI",
+    usg: "USG",
+    msk: "MSK",
+    cns: "CNS",
+    nm: "NM",
+    fmg: "FMG",
+    cerebel: "Cerebel",
+    opthalmology: "Ophthalmology",
+    pyq: "PYQ",
     "e&d": "E&D",
   };
   s = s
@@ -77,11 +110,14 @@ export function prettyTestTitle(raw: string): string {
       const suffix = w.slice(clean.length);
       const key = clean.toLowerCase();
       if (TOKEN[key]) return TOKEN[key] + suffix;
+      if (/^2o\d\d$/i.test(clean)) return `20${clean.slice(2)}${suffix}`;
       if (/^[a-z]/i.test(clean)) return clean[0].toUpperCase() + clean.slice(1) + suffix;
       return w;
     })
     .join(" ")
-    .replace(/\s*&\s*/g, " & ");
+    .replace(/\s*&\s*/g, " & ")
+    .replace(/\bINI CET\b/g, "INI-CET")
+    .replace(/^AIIMS\b/, "INI-CET");
 
   return dateStr ? `${s} · ${dateStr}` : s;
 }

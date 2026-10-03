@@ -4,6 +4,7 @@ import { getCategories, getPopularProducts, getStoreStats } from "@/lib/queries"
 import { getSettings } from "@/lib/settings";
 import { getSocialStats } from "@/lib/social-stats";
 import { formatCompact } from "@/components/StatsMatrix";
+import { getMockBundles } from "@/lib/mock-tests";
 import {
   ArrowRight,
   FileText,
@@ -50,13 +51,20 @@ function TrustBadge({ icon: Icon, title, text }: { icon: React.ComponentType<{ s
 }
 
 export default async function HomePage() {
-  const [categories, stats, settings, social, popular] = await Promise.all([
+  const [categories, stats, settings, social, popular, mockBundles] = await Promise.all([
     getCategories(),
     getStoreStats(),
     getSettings(),
     getSocialStats(),
     getPopularProducts(4),
+    getMockBundles(),
   ]);
+
+  const mockTests = mockBundles.reduce((s, b) => s + b.tests.length, 0);
+  const mockQuestions = mockBundles.reduce(
+    (s, b) => s + b.tests.reduce((n, t) => n + t.num_questions, 0),
+    0
+  );
 
   const waDigits = settings.supportPhone.replace(/\D/g, "");
   const waCollab =
@@ -334,10 +342,11 @@ export default async function HomePage() {
       )}
 
       {/* ==================================================================== FREE MOCK TESTS BAND */}
+      {mockTests > 0 && (
       <section className="mx-auto max-w-6xl px-4 pb-14">
         <div className="flex flex-col gap-6 rounded-card border border-ink-200 bg-gradient-to-br from-brand-50 via-white to-ink-50 p-8 dark:border-ink-700 dark:from-brand-950 dark:via-ink-900 dark:to-ink-900 sm:p-10 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-2xl">
-            <Eyebrow>Free · 27 tests · 3,600 questions</Eyebrow>
+            <Eyebrow>Free · {mockTests} tests · {mockQuestions.toLocaleString("en-IN")} questions</Eyebrow>
             <h2 className="text-2xl font-bold tracking-tight text-ink-900 dark:text-white sm:text-3xl">
               Test yourself before the real thing
             </h2>
@@ -351,6 +360,7 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+      )}
 
       {/* ==================================================================== TRUST SIGNALS */}
       <section className="border-y border-ink-200 bg-ink-50/60 py-14 dark:border-ink-700 dark:bg-ink-800/40">
