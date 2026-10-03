@@ -39,7 +39,7 @@ function toCardData(p: Product): ProductCardData {
 }
 
 function toCategoryNav(c: Category): CategoryNav {
-  return { name: c.name, slug: c.slug, productCount: 0 };
+  return { name: c.name, slug: c.slug, productCount: c.productCount ?? 0 };
 }
 
 // Cache tags for revalidation

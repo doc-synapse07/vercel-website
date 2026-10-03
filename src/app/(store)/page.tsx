@@ -6,7 +6,7 @@ import { getSocialStats } from "@/lib/social-stats";
 import {
   ArrowRight,
   FileText,
-  MessageCircle,
+  MessageSquare,
   Send,
   Video,
   Shield,
@@ -15,7 +15,7 @@ import {
   Youtube,
   Instagram,
   Users,
-  MessageSquare,
+  MessageCircle,
 } from "lucide-react";
 
 /**
@@ -271,25 +271,53 @@ export default async function HomePage() {
             </Link>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          {/* Desktop: compact rectangular cards, all visible at a glance */}
+          <div className="hidden gap-3 md:grid md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+            {categories.map((c, i) => (
+              <Link
+                key={c.slug}
+                href={`/category/${c.slug}`}
+                className="group flex items-center gap-3 rounded-card border border-ink-200 bg-white px-4 py-3 transition-all hover:-translate-y-0.5 hover:border-brand-400 hover:shadow-lg hover:shadow-brand-700/10 dark:border-ink-700 dark:bg-ink-800 dark:hover:border-brand-500 dark:hover:shadow-black/40"
+              >
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-brand-700 text-[13px] font-extrabold tabular-nums text-white transition-colors group-hover:bg-brand-800">
+                  {String(i + 1).padStart(2, "0")}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-ink-900 dark:text-white">
+                    {c.name}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-ink-500 dark:text-ink-400">
+                    {c.productCount} {c.productCount === 1 ? "product" : "products"}
+                  </span>
+                </span>
+                <ArrowRight
+                  size={16}
+                  className="shrink-0 text-ink-300 transition-all group-hover:translate-x-1 group-hover:text-brand-700 dark:text-ink-500 dark:group-hover:text-brand-300"
+                />
+              </Link>
+            ))}
+          </div>
+
+          {/* Mobile: compact cards */}
+          <div className="grid grid-cols-3 gap-2 md:hidden">
             {categories.map((c) => (
               <Link
                 key={c.slug}
                 href={`/category/${c.slug}`}
-                className="group card-glow relative flex flex-col overflow-hidden rounded-card border border-ink-200 bg-white p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg hover:shadow-brand-900/5 dark:border-ink-700 dark:bg-ink-800 dark:hover:border-brand-500 dark:hover:shadow-black/40 min-h-[180px]"
+                className="group card-glow relative flex min-h-[140px] flex-col overflow-hidden rounded-card border border-ink-200 bg-white p-2 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-lg hover:shadow-brand-900/5 dark:border-ink-700 dark:bg-ink-800 dark:hover:border-brand-500 dark:hover:shadow-black/40"
               >
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-lg bg-brand-50 text-brand-700 group-hover:bg-brand-100 group-hover:text-brand-800 dark:bg-brand-950 dark:text-brand-300 dark:group-hover:bg-brand-900 dark:group-hover:text-brand-400 transition-all">
-                  <FileText size={18} />
+                <div className="mb-1.5 flex h-7 w-7 items-center justify-center rounded-lg bg-brand-50 text-brand-700 transition-all group-hover:bg-brand-100 group-hover:text-brand-800 dark:bg-brand-950 dark:text-brand-300 dark:group-hover:bg-brand-900 dark:group-hover:text-brand-400">
+                  <FileText size={14} />
                 </div>
-                <h3 className="mb-1 text-sm font-semibold text-ink-900 dark:text-white group-hover:text-brand-700 dark:group-hover:text-brand-300 transition-colors line-clamp-1">
+                <h3 className="mb-1 line-clamp-1 text-[11px] font-semibold text-ink-900 transition-colors group-hover:text-brand-700 dark:text-white dark:group-hover:text-brand-300">
                   {c.name}
                 </h3>
-                <p className="text-xs text-ink-500 dark:text-ink-400">
+                <p className="text-[10px] text-ink-500 dark:text-ink-400">
                   {c.productCount} product{c.productCount !== 1 ? "s" : ""}
                 </p>
-                <div className="mt-auto flex items-center justify-between pt-2 border-t border-ink-100 dark:border-ink-800">
-                  <span className="text-xs font-medium text-ink-400 dark:text-ink-500">Explore</span>
-                  <ArrowRight size={12} className="text-brand-600 dark:text-brand-400 group-hover:translate-x-1 transition-transform" />
+                <div className="mt-auto flex items-center justify-between border-t border-ink-100 pt-1.5 dark:border-ink-800">
+                  <span className="text-[10px] font-medium text-ink-400 dark:text-ink-500">Explore</span>
+                  <ArrowRight size={10} className="text-brand-600 transition-transform group-hover:translate-x-1 dark:text-brand-400" />
                 </div>
               </Link>
             ))}
@@ -339,44 +367,6 @@ export default async function HomePage() {
                 Our services
               </Link>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ==================================================================== NEWSLETTER / FOOTER CTA */}
-      <section className="border-t border-ink-200 bg-white dark:border-ink-700 dark:bg-ink-900">
-        <div className="mx-auto max-w-6xl px-4 py-14 text-center">
-          <Eyebrow>Stay updated</Eyebrow>
-          <h2 className="mb-3 text-2xl font-bold tracking-tight text-ink-900 dark:text-white sm:text-3xl">
-            Never miss a new release or discount
-          </h2>
-          <p className="mb-6 max-w-xl mx-auto text-sm leading-relaxed text-ink-600 dark:text-ink-400">
-            Join our community for exam tips, new product alerts and exclusive coupons.
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-2.5 w-full">
-            {settings.telegramUrl && (
-              <a
-                href={settings.telegramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-primary btn-md w-full sm:w-auto"
-              >
-                <Send size={15} /> Join Telegram
-              </a>
-            )}
-            {settings.whatsappUrl && (
-              <a
-                href={settings.whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-outline btn-md w-full sm:w-auto"
-              >
-                <MessageCircle size={15} /> WhatsApp Channel
-              </a>
-            )}
-            <Link href="/products" className="btn btn-outline btn-md w-full sm:w-auto">
-              Browse store
-            </Link>
           </div>
         </div>
       </section>

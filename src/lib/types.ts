@@ -164,6 +164,7 @@ export type Category = {
   description: string | null;
   sortOrder: number;
   isActive: boolean;
+  productCount?: number;
 };
 
 export type OrderItem = {

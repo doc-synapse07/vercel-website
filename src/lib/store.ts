@@ -231,8 +231,26 @@ export async function getCategories(): Promise<Category[]> {
   const sql = getPg();
   if (!sql) return readJson<Category[]>(categoriesPath, []);
   await ensureSchema(sql);
-  const rows = await sql`SELECT data FROM s_categories ORDER BY (data->>'sortOrder')::int ASC, (data->>'name') ASC`;
-  return rows.map((row: any) => row.data as Category);
+  
+  // Get categories with product counts
+  const rows = await sql`
+    SELECT 
+      c.data,
+      COALESCE(p.product_count, 0) as product_count
+    FROM s_categories c
+    LEFT JOIN (
+      SELECT (data->>'categorySlug') as category_slug, count(*) as product_count
+      FROM s_products
+      WHERE (data->>'isActive')::boolean = true
+      GROUP BY (data->>'categorySlug')
+    ) p ON c.data->>'slug' = p.category_slug
+    ORDER BY (c.data->>'sortOrder')::int ASC, (c.data->>'name') ASC
+  `;
+  
+  return rows.map((row: any) => ({
+    ...row.data,
+    productCount: Number(row.product_count || 0)
+  } as Category));
 }
 
 export async function getCategoryBySlug(slug: string): Promise<Category | undefined> {

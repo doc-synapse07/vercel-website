@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Menu, ShoppingCart, User, X } from "lucide-react";
+import { ChevronRight, Home, Menu, ShoppingBag, ShoppingCart, Sparkles, User, X } from "lucide-react";
 import { useCart } from "@/components/cart/CartProvider";
 
 /**
@@ -25,6 +25,12 @@ const NAV = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Shop" },
   { href: "/services", label: "Services" },
+] as const;
+
+const MOBILE_NAV = [
+  { href: "/", label: "Home", desc: "Start here", icon: Home },
+  { href: "/products", label: "Shop", desc: "PDF notes & bundles", icon: ShoppingBag },
+  { href: "/services", label: "Services", desc: "Videos & collabs", icon: Sparkles },
 ] as const;
 
 function NavLink({
@@ -62,6 +68,21 @@ export function SiteHeader({ siteName }: { siteName: string }) {
   // Close the mobile sheet whenever the route changes, otherwise it survives
   // navigation and covers the page the customer just asked for.
   useEffect(() => setMobileOpen(false), [pathname]);
+
+  // Lock background scroll + close on Escape while the mobile menu is open.
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [mobileOpen]);
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -118,8 +139,12 @@ export function SiteHeader({ siteName }: { siteName: string }) {
           <button
             type="button"
             onClick={() => setMobileOpen((v) => !v)}
-            className="grid h-9 w-9 place-items-center text-ink-700 transition-colors hover:text-brand-700 dark:text-ink-300 dark:hover:text-brand-300 lg:hidden"
-            aria-label="Toggle menu"
+            className={`grid h-10 w-10 place-items-center rounded-lg transition-colors lg:hidden ${
+              mobileOpen
+                ? "bg-ink-100 text-ink-900 dark:bg-ink-800 dark:text-white"
+                : "text-ink-700 hover:bg-ink-100 dark:text-ink-300 dark:hover:bg-ink-800"
+            }`}
+            aria-label={mobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileOpen}
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
@@ -129,39 +154,91 @@ export function SiteHeader({ siteName }: { siteName: string }) {
 
       {/* ------------------------------------------------------ mobile sheet */}
       {mobileOpen && (
-        <div className="max-h-[calc(100vh-8rem)] overflow-y-auto border-t border-ink-200 bg-white dark:border-ink-700 dark:bg-ink-900 lg:hidden">
-          <nav className="mx-auto flex max-w-6xl flex-col gap-1 p-4">
-            {NAV.map((l) => (
-              <NavLink
-                key={l.href}
-                href={l.href}
-                active={isActive(l.href)}
+        <>
+          {/* Backdrop — tap anywhere outside to close */}
+          <button
+            type="button"
+            aria-label="Close menu"
+            onClick={() => setMobileOpen(false)}
+            className="fixed inset-x-0 bottom-0 top-16 cursor-default bg-ink-950/40 backdrop-blur-[2px] lg:hidden"
+          />
+          <div className="animate-fade-up absolute inset-x-0 top-full z-10 max-h-[calc(100dvh-4rem)] overflow-y-auto rounded-b-2xl border-t border-ink-200 bg-white shadow-xl shadow-ink-950/10 dark:border-ink-700 dark:bg-ink-900 lg:hidden">
+            <nav
+              aria-label="Mobile"
+              className="mx-auto max-w-6xl space-y-1 p-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            >
+              {MOBILE_NAV.map((l) => {
+                const active = isActive(l.href);
+                const Icon = l.icon;
+                return (
+                  <Link
+                    key={l.href}
+                    href={l.href}
+                    onClick={() => setMobileOpen(false)}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex min-h-[56px] items-center gap-3 rounded-xl px-3 py-3 transition-colors ${
+                      active
+                        ? "bg-brand-50 text-brand-800 dark:bg-brand-950 dark:text-brand-200"
+                        : "text-ink-800 hover:bg-ink-100 active:bg-ink-100 dark:text-ink-100 dark:hover:bg-ink-800 dark:active:bg-ink-800"
+                    }`}
+                  >
+                    <span
+                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${
+                        active
+                          ? "bg-brand-600 text-white"
+                          : "bg-ink-100 text-ink-600 dark:bg-ink-800 dark:text-ink-300"
+                      }`}
+                    >
+                      <Icon size={19} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-bold leading-tight">
+                        {l.label}
+                      </span>
+                      <span className="block truncate text-xs font-medium text-ink-500 dark:text-ink-400">
+                        {l.desc}
+                      </span>
+                    </span>
+                    <ChevronRight
+                      size={18}
+                      className={active ? "text-brand-600 dark:text-brand-300" : "text-ink-400"}
+                    />
+                  </Link>
+                );
+              })}
+
+              <div
+                aria-hidden
+                className="mx-3 my-2 border-t border-ink-200 dark:border-ink-700"
+              />
+
+              <Link
+                href="/account"
                 onClick={() => setMobileOpen(false)}
+                aria-current={pathname.startsWith("/account") ? "page" : undefined}
+                className={`flex min-h-[52px] items-center gap-3 rounded-xl px-3 py-3 text-[15px] font-semibold transition-colors ${
+                  pathname.startsWith("/account")
+                    ? "bg-brand-50 text-brand-800 dark:bg-brand-950 dark:text-brand-200"
+                    : "text-ink-800 hover:bg-ink-100 active:bg-ink-100 dark:text-ink-100 dark:hover:bg-ink-800 dark:active:bg-ink-800"
+                }`}
               >
-                {l.label}
-              </NavLink>
-            ))}
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-ink-100 text-ink-600 dark:bg-ink-800 dark:text-ink-300">
+                  <User size={19} />
+                </span>
+                My account
+                <ChevronRight size={18} className="ml-auto text-ink-400" />
+              </Link>
 
-            <Link
-              href="/account"
-              onClick={() => setMobileOpen(false)}
-              className="rounded-lg px-1 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100 dark:text-ink-200 dark:hover:bg-ink-800"
-            >
-              Account
-            </Link>
-            <Link
-              href="/faq"
-              onClick={() => setMobileOpen(false)}
-              className="rounded-lg px-1 py-2 text-sm font-medium text-ink-700 hover:bg-ink-100 dark:text-ink-200 dark:hover:bg-ink-800"
-            >
-              FAQ
-            </Link>
-
-            <Link href="/contact" className="btn btn-primary btn-md mt-4 w-full">
-              Get in touch
-            </Link>
-          </nav>
-        </div>
+              <Link
+                href="/contact"
+                onClick={() => setMobileOpen(false)}
+                className="btn btn-primary btn-md mt-2 min-h-[52px] w-full text-base"
+              >
+                Get in touch
+              </Link>
+            </nav>
+          </div>
+        </>
       )}
     </header>
   );
