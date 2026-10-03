@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { CartProvider } from "@/components/cart/CartProvider";
-import { CartDrawer } from "@/components/cart/CartDrawer";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getSettings } from "@/lib/settings";
@@ -54,7 +53,6 @@ export default async function StoreLayout({ children }: { children: React.ReactN
           whatsappUrl: settings.whatsappUrl,
         }}
       />
-      <CartDrawer />
       </div>
       <Analytics />
       <SpeedInsights />

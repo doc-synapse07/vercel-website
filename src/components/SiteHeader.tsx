@@ -63,7 +63,7 @@ function NavLink({
 }
 
 export function SiteHeader({ siteName }: { siteName: string }) {
-  const { count, openDrawer, ready } = useCart();
+  const { count, ready } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
 
@@ -112,9 +112,8 @@ export function SiteHeader({ siteName }: { siteName: string }) {
 
         {/* ------------------------------------------------------ right side */}
         <div className="relative z-10 flex items-center gap-1 sm:gap-2">
-          <button
-            type="button"
-            onClick={openDrawer}
+          <Link
+            href="/cart"
             aria-label={`Open cart, ${count} item${count === 1 ? "" : "s"}`}
             className="relative grid h-9 w-9 place-items-center text-ink-600 transition-colors hover:text-brand-700 dark:text-ink-300 dark:hover:text-brand-300"
           >
@@ -124,7 +123,7 @@ export function SiteHeader({ siteName }: { siteName: string }) {
                 {count > 99 ? "99+" : count}
               </span>
             )}
-          </button>
+          </Link>
 
           <Link
             href="/account"

@@ -21,7 +21,10 @@ export default function CartPage() {
         <span className="text-ink-800">Cart</span>
       </nav>
 
-      <h1 className="mb-6 text-2xl font-bold tracking-tight text-ink-900 sm:text-3xl">
+      <p className="mt-6 text-[11px] font-bold uppercase tracking-[0.2em] text-brand-700 dark:text-brand-300">
+        Shop / Cart
+      </p>
+      <h1 className="mb-6 mt-1 text-2xl font-extrabold uppercase tracking-tight text-ink-900 dark:text-white sm:text-3xl">
         Your cart
       </h1>
 

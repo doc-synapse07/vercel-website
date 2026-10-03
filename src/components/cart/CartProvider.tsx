@@ -51,9 +51,6 @@ type CartContextValue = {
   removeItem: (productId: string) => void;
   clear: () => void;
   has: (productId: string, variantId?: string) => boolean;
-  openDrawer: () => void;
-  closeDrawer: () => void;
-  drawerOpen: boolean;
 };
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -68,7 +65,6 @@ export function CartProvider({
   const [items, setItems] = useState<CartItem[]>([]);
   const [ready, setReady] = useState(false);
   const [prevId, setPrevId] = useState<string | null>(customerId);
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Handle customerId changes (login/logout/switch)
   if (prevId !== customerId && typeof window !== "undefined") {
@@ -164,7 +160,6 @@ export function CartProvider({
           },
         ];
       });
-      setDrawerOpen(true);
     };
 
     const setQty = (key: string, qty: number) => {
@@ -209,9 +204,6 @@ export function CartProvider({
       },
       clear,
       has,
-      openDrawer: () => setDrawerOpen(true),
-      closeDrawer: () => setDrawerOpen(false),
-      drawerOpen,
     };
   }, [items, ready, customerId]);
 

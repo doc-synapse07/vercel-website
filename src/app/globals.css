@@ -474,18 +474,6 @@ body {
   font-size: 14px;
 }
 
-@keyframes slide-in-right {
-  from {
-    transform: translateX(100%);
-  }
-  to {
-    transform: translateX(0);
-  }
-}
-.animate-slide-in {
-  animation: slide-in-right 0.25s ease-out both;
-}
-
 /* Hide scrollbar on the horizontal category rail */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
