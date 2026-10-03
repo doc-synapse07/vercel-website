@@ -11,7 +11,7 @@ import { SortDropdown } from "./SortDropdown";
 export const metadata: Metadata = {
   title: "All products",
   description:
-    "Browse every exam-preparation PDF in the store — UPSC CMS, NEET PG, INI-CET, FMGE, NORCET and state exams.",
+    "Browse every exam-preparation PDF in the store — UPSC CMS, NEET PG, INI-CET, FMGE and state exams.",
 };
 
 const PER_PAGE = 24;

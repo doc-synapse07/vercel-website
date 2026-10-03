@@ -36,6 +36,7 @@ export function SiteFooter({
     { href: "/", label: "Home" },
     { href: "/products", label: "Products" },
     { href: "/mock-tests", label: "Mock Tests" },
+    { href: "/about", label: "About us" },
     { href: "/cart", label: "Cart" },
     { href: "/faq", label: "FAQ" },
     { href: "/contact", label: "Contact" },

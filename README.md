@@ -1,7 +1,7 @@
 # SYNAPSE.07 — Digital Notes Store
 
 E-commerce storefront selling exam-preparation PDFs (UPSC CMS, NEET PG, INI-CET, FMGE,
-NORCET, GPSC and state exams), with an admin panel, cart/checkout, coupons, and
+FMGE, GPSC and state exams), with an admin panel, cart/checkout, coupons, and
 emailed 24-hour download links.
 
 Built with **Next.js 15 (App Router)**, **React 19**, **Tailwind CSS v4**,
@@ -16,7 +16,7 @@ Repo: `doc-synapse07/vercel-website` · Deploys to **Vercel**.
 **Storefront**
 
 - Home, `/products` listing (search, category filter, sort dropdown, pagination), product detail pages
-- Category pages (`/category/[slug]`) — UPSC CMS, INI-CET, NEET PG, FMGE, NORCET, GPSC, Rajasthan MO, RUHS, Compiled Modules, Free Resources
+- Category pages (`/category/[slug]`) — UPSC CMS, INI-CET, NEET PG, FMGE, GPSC, Rajasthan MO, RUHS, Compiled Modules, Free Resources
 - Cart (`/cart`) with **Add to cart** and **Buy now**, persisted in `localStorage`
 - Checkout collects only name, phone and email — no account required
 - Coupons: percentage or flat, with min order value, cap, per-customer limit, total usage limit, start date and expiry

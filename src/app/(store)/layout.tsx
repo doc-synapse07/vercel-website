@@ -12,19 +12,18 @@ export const metadata: Metadata = {
     template: "%s | SYNAPSE.07",
   },
   description:
-    "High-yield exam-preparation PDFs for UPSC CMS, NEET PG, INI-CET, FMGE and NORCET. Instant download links delivered to your inbox.",
+    "High-yield exam-preparation PDFs for UPSC CMS, NEET PG, INI-CET and FMGE. Instant download links delivered to your inbox.",
   keywords: [
     "UPSC CMS notes",
     "NEET PG PYQ",
     "INI-CET PYQ",
     "FMGE notes",
-    "NORCET PYQ",
     "medical exam preparation PDF",
   ],
   openGraph: {
     title: "SYNAPSE.07 — Medical Exam Preparation PDFs",
     description:
-      "High-yield exam-preparation PDFs for UPSC CMS, NEET PG, INI-CET, FMGE and NORCET.",
+      "High-yield exam-preparation PDFs for UPSC CMS, NEET PG, INI-CET and FMGE.",
     type: "website",
   },
   robots: { index: true, follow: true },

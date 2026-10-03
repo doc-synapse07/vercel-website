@@ -64,12 +64,6 @@ export const SEED_CATEGORIES: SeedCategory[] = [
     sortOrder: 5,
   },
   {
-    name: "NORCET",
-    slug: "norcet",
-    description: "NORCET papers with explanations, expected questions and compiled modules.",
-    sortOrder: 6,
-  },
-  {
     name: "GPSC",
     slug: "gpsc",
     description: "Gujarat Public Service Commission medical officer and health officer preparation.",
@@ -419,19 +413,6 @@ export const SEED_PRODUCTS: SeedProduct[] = [
       "<p><strong>FMGE ALL IN ONE PDF — UPDATED</strong></p><ol><li>FMGE 5 year PYQ complete PDF</li><li>Paediatric all in one FMGE</li><li>Radiology / image based — all PYQ image based, PSM image based, radiology CNS, psychiatry image based final</li><li>Updates all in one</li><li>DOC all in one PDF — pharmacology, microbiology, OBGYN, image based side effects</li></ol>",
     sourceImage:
       "https://media-cdn.cosmofeed.com/chat/1000046995-2026-22-04-02-06-13.png",
-  },
-
-  // ---------------------------------------------------------------------- NORCET
-  {
-    title: "NORCET Papers + Compiled Module",
-    categorySlug: "norcet",
-    price: 500,
-    mrp: 999,
-    shortDescription: "NORCET papers 1–10 with explanations and expected questions, plus updates, DOC and image PYQs.",
-    description:
-      "<p><strong>What's inside</strong></p><ol><li>NORCET 1–5 papers + explanations + expected questions</li><li>NORCET 6–10 papers + explanations + expected questions</li><li>All-in-one updates</li><li>Pharmacology drug of choice</li><li>Psychiatry image-based MCQs</li><li>Pharmacology side effects list</li><li>All image-based PYQs PDF</li><li>Buzzwords — all in one</li></ol>",
-    sourceImage:
-      "https://media-cdn.cosmofeed.com/chat/CF9CB227-5D10-4D06-869E-203B44091DD6-2026-24-09-08-52-12.png",
   },
 
   // ----------------------------------------------------------------------- GPSC

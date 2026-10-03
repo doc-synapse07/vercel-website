@@ -7,11 +7,13 @@ import { formatCompact } from "@/components/StatsMatrix";
 import { getMockBundles } from "@/lib/mock-tests";
 import {
   ArrowRight,
+  ClipboardCheck,
   FileText,
   MessageSquare,
   Send,
   Video,
   Shield,
+  ShoppingBag,
   Star,
   Zap,
   Youtube,
@@ -145,7 +147,6 @@ export default async function HomePage() {
               INI-CET <span className="mx-1.5 text-brand-600 dark:text-brand-400">|</span>
               NEET PG <span className="mx-1.5 text-brand-600 dark:text-brand-400">|</span>
               FMGE <span className="mx-1.5 text-brand-600 dark:text-brand-400">|</span>
-              NORCET <span className="mx-1.5 text-brand-600 dark:text-brand-400">|</span>
               GPSC
             </p>
             <p className="mb-8 max-w-2xl text-base leading-relaxed text-ink-600 dark:text-ink-300 sm:text-lg">
@@ -172,15 +173,12 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-2.5 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full sm:w-auto">
               <Link href="/products" className="btn btn-primary btn-lg w-full sm:w-auto">
-                Browse notes <ArrowRight size={16} />
+                <ShoppingBag size={17} /> Shop notes <ArrowRight size={16} />
               </Link>
-              <Link href="/services" className="btn btn-outline btn-lg w-full sm:w-auto">
-                Video services
-              </Link>
-              <Link href="/contact" className="btn btn-outline btn-lg w-full sm:w-auto">
-                Get in touch
+              <Link href="/mock-tests" className="btn btn-outline btn-lg w-full sm:w-auto">
+                <ClipboardCheck size={17} /> Free mock tests
               </Link>
             </div>
           </div>

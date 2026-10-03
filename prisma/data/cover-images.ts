@@ -34,7 +34,6 @@ export const COVER_IMAGES: CoverImage[] = [
   { name: "neet-lrr", url: "https://media-cdn.cosmofeed.com/chat/1000045652-2026-03-04-06-28-55.png" },
   { name: "image-all-in-one", url: "https://media-cdn.cosmofeed.com/chat/83060BD8-B598-42DF-A00B-C42BFFF8F0D3-2026-09-05-08-31-52.png" },
   { name: "fmge-compiled", url: "https://media-cdn.cosmofeed.com/chat/1000046995-2026-22-04-02-06-13.png" },
-  { name: "norcet-papers", url: "https://media-cdn.cosmofeed.com/chat/CF9CB227-5D10-4D06-869E-203B44091DD6-2026-24-09-08-52-12.png" },
   { name: "gpsc-medical-health-officer", url: "https://media-cdn.cosmofeed.com/chat/1621ECE8-4BB4-4BC5-9E6C-DBD9697E32DA-2026-21-05-04-32-41.png" },
   { name: "cms-lrr", url: "https://media-cdn.cosmofeed.com/chat/IMG_2072-2026-22-07-08-11-26.jpeg" },
   { name: "upsc-paper1-2-pyq", url: "https://media-cdn.cosmofeed.com/chat/1000047451-2026-09-05-08-46-35.png" },
