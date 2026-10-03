@@ -36,20 +36,6 @@ export type ProductCardData = {
   fileCount: number;
 };
 
-export type AdminStats = {
-  totalProducts: number;
-  activeProducts: number;
-  totalOrders: number;
-  paidOrders: number;
-  totalRevenuePaise: number;
-  revenueLast30DaysPaise: number;
-  ordersLast30Days: number;
-  totalCustomers: number;
-  activeCoupons: number;
-  totalDownloads: number;
-  lowFileProducts: number;
-};
-
 export type OrderRow = {
   id: string;
   orderNumber: string;
@@ -62,22 +48,6 @@ export type OrderRow = {
   couponCode: string | null;
   itemCount: number;
   createdAt: Date;
-};
-
-export type CouponRow = {
-  id: string;
-  code: string;
-  description: string | null;
-  discountType: string;
-  discountValue: number;
-  minOrderPaise: number | null;
-  maxDiscountPaise: number | null;
-  usageLimit: number | null;
-  perUserLimit: number | null;
-  usedCount: number;
-  startsAt: Date | null;
-  expiresAt: Date | null;
-  isActive: boolean;
 };
 
 // Fusion patterns: Additional types for new features (don't break existing)

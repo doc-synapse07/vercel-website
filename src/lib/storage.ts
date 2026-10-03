@@ -16,7 +16,7 @@ import path from "path";
 
 export type StorageDriver = "r2" | "local";
 
-export const LOCAL_STORAGE_DIR = path.join(process.cwd(), "storage");
+const LOCAL_STORAGE_DIR = path.join(process.cwd(), "storage");
 
 export function getStorageDriver(): StorageDriver {
   const { R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET } = process.env;

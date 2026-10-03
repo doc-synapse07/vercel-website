@@ -26,7 +26,7 @@ export function newDownloadToken(): string {
   return randomBytes(32).toString("base64url");
 }
 
-export type PreparedOrderInput = {
+type PreparedOrderInput = {
   customerName: string;
   email: string;
   phone: string;

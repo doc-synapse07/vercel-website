@@ -15,19 +15,20 @@
 | Coupons (percent/flat, caps, expiry, per-user + total limits) | ✅ |
 | Admin panel (products, orders, coupons, settings, dashboard) | ✅ |
 | Customer accounts (email/password + Google, order history) | ✅ |
-| Order status emails (shipped/packed) + resend-links flow | ✅ |
-| HTML email pipeline (`mail.ts` + `order-emails.ts`) | ✅ |
+| Resend-links flow for lapsed/expired grants | ✅ |
+| Single HTML email pipeline (`mail.ts`) | ✅ |
 | Vercel Analytics + Speed Insights | ✅ |
 | Sitemap + robots (`npm run sitemap`, also runs on `postbuild`) | ✅ |
 | Cache tags (`CACHE_TAGS` + `revalidateTag` on admin mutations) | ✅ |
 | Bundle analyzer (`npm run analyze`) | ✅ |
+| Dead-code cleanup (duplicate email module, orphan store mutations, unused exports) | ✅ |
 
 ## Deliberately out of scope
 
 | Item | Reason |
 |------|--------|
 | Refunds / returns for digital products | Digital downloads are non-returnable; statuses are `PENDING \| PAID \| FAILED` |
-| 3D-printing / STL upload / courier shipping | Physical-goods track removed; store is digital-only |
+| 3D-printing / STL upload / courier shipping | Physical-goods track removed; store is digital-only (physical variant UI remains for bundles/editions) |
 | Stripe-only migration | Keeping Razorpay + Cashfree for the Indian market |
 
 ## Optional follow-ups (low priority)
@@ -51,6 +52,8 @@
   `/api/checkout` recomputes everything server-side.
 - **Secrets:** admin-panel secrets are AES-256-GCM sealed (`SETTINGS_ENCRYPTION_KEY`
   falling back to `AUTH_SECRET`).
+- **Typecheck covers everything:** `npm run typecheck` includes `src/`, `scripts/`,
+  and `prisma/` (test scripts import lib helpers, e.g. `parseYouTubeTarget`).
 - **One-time scripts:** `scripts/repair-category-slugs.ts` is idempotent and safe to
   re-run; `fetch-images` / `localise-cover-images` / `attach-sample-pdf` are
   documented dev/one-time helpers.

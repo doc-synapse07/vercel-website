@@ -72,5 +72,3 @@ export const getCurrentCustomer = cache(async (): Promise<CustomerSession | null
   if (!customer) return null;
   return { sub: customer.id, email: customer.email, name: customer.name };
 });
-
-export { COOKIE_NAME as CUSTOMER_COOKIE_NAME };

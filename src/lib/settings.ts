@@ -22,8 +22,6 @@ export const DEFAULT_SETTINGS = {
 
 export type Settings = Record<keyof typeof DEFAULT_SETTINGS, string>;
 
-const CACHE_KEY = "settings:all";
-
 /** In-process cache; settings change rarely so a short TTL is fine. */
 let cache: { value: Settings; expires: number } | null = null;
 const TTL_MS = 30_000;

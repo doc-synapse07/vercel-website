@@ -8,6 +8,11 @@ const bundleAnalyzer = withBundleAnalyzer({
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  // @neondatabase/serverless and postgres are ESM/CJS hybrids that break
+  // Next's server bundling (missing ./vendor-chunks) when a route is
+  // statically analyzed. Load them at runtime instead.
+  serverExternalPackages: ["@neondatabase/serverless", "postgres"],
+
   // Product PDFs are often 50–200 MB, so the default 1 MB server-action body
   // limit has to be raised for the admin upload form to work.
   experimental: {

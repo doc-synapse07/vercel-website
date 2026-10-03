@@ -35,6 +35,7 @@ export function SiteFooter({
   const primaryLinks = [
     { href: "/", label: "Home" },
     { href: "/products", label: "Products" },
+    { href: "/mock-tests", label: "Mock Tests" },
     { href: "/cart", label: "Cart" },
     { href: "/faq", label: "FAQ" },
     { href: "/contact", label: "Contact" },

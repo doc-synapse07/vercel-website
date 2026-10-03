@@ -52,7 +52,7 @@ const UA = "synapse07-store/1.0";
 const TTL_MS = 30_000;
 let memCache: { value: SocialStats; expires: number } | null = null;
 
-export function clearSocialStatsCache() {
+function clearSocialStatsCache() {
   memCache = null;
 }
 

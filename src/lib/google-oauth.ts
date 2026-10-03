@@ -14,7 +14,7 @@ export function isGoogleConfigured(): boolean {
   return Boolean(process.env.GOOGLE_CLIENT_ID?.trim() && process.env.GOOGLE_CLIENT_SECRET?.trim());
 }
 
-export function getGoogleRedirectUri(): string {
+function getGoogleRedirectUri(): string {
   const base = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
   return `${base}/api/auth/google/callback`;
 }

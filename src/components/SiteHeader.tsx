@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ChevronRight, Home, Menu, ShoppingBag, ShoppingCart, Sparkles, User, X } from "lucide-react";
+import { ChevronRight, ClipboardList, Home, Menu, ShoppingBag, ShoppingCart, Sparkles, User, X } from "lucide-react";
 import { useCart } from "@/components/cart/CartProvider";
 
 /**
@@ -24,12 +24,14 @@ import { useCart } from "@/components/cart/CartProvider";
 const NAV = [
   { href: "/", label: "Home" },
   { href: "/products", label: "Shop" },
+  { href: "/mock-tests", label: "Mock Tests" },
   { href: "/services", label: "Services" },
 ] as const;
 
 const MOBILE_NAV = [
   { href: "/", label: "Home", desc: "Start here", icon: Home },
   { href: "/products", label: "Shop", desc: "PDF notes & bundles", icon: ShoppingBag },
+  { href: "/mock-tests", label: "Mock Tests", desc: "Free practice tests", icon: ClipboardList },
   { href: "/services", label: "Services", desc: "Videos & collabs", icon: Sparkles },
 ] as const;
 

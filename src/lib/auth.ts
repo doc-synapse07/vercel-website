@@ -89,11 +89,3 @@ export const getCurrentAdmin = cache(async (): Promise<SessionPayload | null> =>
   return { sub: admin.id, email: admin.email, name: admin.name, role: admin.role as AdminRole };
 });
 
-/** Throws if no valid admin session. Use in server actions and API routes. */
-export async function requireAdmin(): Promise<SessionPayload> {
-  const admin = await getCurrentAdmin();
-  if (!admin) throw new Error("UNAUTHORISED");
-  return admin;
-}
-
-export { COOKIE_NAME as ADMIN_COOKIE_NAME };

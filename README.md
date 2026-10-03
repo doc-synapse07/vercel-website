@@ -37,9 +37,10 @@ Repo: `doc-synapse07/vercel-website` · Deploys to **Vercel**.
 **Payments** — Razorpay, Stripe, Cashfree, plus a built-in sandbox gateway for local testing.
 Whichever provider is configured is used; the sandbox route returns `403` as soon as any real
 gateway has keys, so it can never mark orders paid on a live store. Webhook signatures are
-verified with `crypto.timingSafeEqual`. The checkout page also verifies payment directly after
-the gateway returns, so downloads work even before webhooks are live — webhooks are the safety
-net for interrupted sessions.
+verified in constant time (`crypto.timingSafeEqual`, including the shared Razorpay helper).
+Razorpay and Cashfree verify payment directly after the gateway returns, so downloads work even
+before webhooks arrive — webhooks are the safety net for interrupted sessions. (Stripe relies
+on its webhook + client-side confirmation; there is no direct-verify route for Stripe.)
 
 **Delivery** — on successful payment the server creates one `DownloadGrant` per file with an
 unguessable token and emails the links. Files stream only through `/api/download/[token]`
@@ -99,10 +100,13 @@ Browser
   download grants, customer auth, admin users, SMTP/social secrets, settings.
 - `src/lib/store.ts` — catalogue *read* layer only (products, categories, settings, store stats)
   over `s_*` JSONB tables in the same Postgres database (Neon serverless on Vercel/edge,
-  `postgres-js` elsewhere). Falls back to `data/*.json` when no database URL is set.
+  `postgres-js` elsewhere). When no database URL is set it falls back to empty results
+  (there is no versioned `data/*.json` seed at the repo root — seed via `npm run db:seed`).
   `src/lib/queries.ts` wraps it in `unstable_cache` with `CACHE_TAGS`, so admin edits revalidate
   instantly via `revalidateTag`. Product/category/order/customer *mutations* live in Prisma and
   admin server actions — not in `store.ts`.
+- **Email pipeline** — `mail.ts` (`sendMail` + `sendOrderEmail`) is the live order path;
+  there is no parallel template system.
 
 **Money** — every price, discount and total is an integer number of **paise** (`₹199 = 19900`).
 Client totals are never trusted: `/api/checkout` re-reads products from the database,
@@ -127,28 +131,31 @@ scripts/
   smoke-test.ts / coupon-test.ts / account-test.ts / smtp-test.ts / social-test.ts
                        test suites (see `npm run test:*`)
   fetch-images.ts / localise-cover-images.ts   one-time cover pipeline
+                       (covers already live in public/products/)
   attach-sample-pdf.ts throwaway PDFs for exercising downloads
   repair-category-slugs.ts  one-time categorySlug repair (safe to re-run)
 src/
   app/
     (store)/          home, products, product detail, category, cart,
-                      checkout (+ mock), order success, account, services,
+                      checkout (+ mock sandbox), order success, account, services,
                       contact, faq, privacy, terms, returns
     admin/            layout, dashboard, products (+ VariantManager), orders,
                       coupons, settings, login
     api/              auth/google, checkout, coupons, download, media,
-                      payments (mock + verify), products, webhooks
+                      payments (mock + verify/razorpay + verify/cashfree),
+                      products, webhooks (razorpay/stripe/cashfree)
   components/         header, footer, product card, search, cart, checkout UI,
-                      VariantManager (physical-product variants)
+                      VariantManager (physical-product variants),
+                      StatsMatrix (formatCompact helper; no page component)
   lib/
     store.ts          catalogue *read* layer over s_* JSONB tables
     db.ts             Prisma client singleton (source of truth)
     queries.ts        cached read API + CACHE_TAGS
     orders.ts         totals, pending orders, fulfilment, download grants
     coupons.ts        coupon validation + redemption bookkeeping
-    payments/         Razorpay, Stripe, Cashfree, sandbox
-    storage.ts        R2 with local ./storage fallback
-    mail.ts / mail-config.ts / order-emails.ts   email pipeline
+    payments/         Razorpay, Stripe, Cashfree, sandbox (single index.ts)
+    storage.ts        R2 with local ./storage fallback (+ r2-usage.ts for dashboard)
+    mail.ts / mail-config.ts   SMTP delivery + admin-panel config
     secrets.ts        AES-256-GCM sealing
     auth.ts / auth-password.ts / customer-auth.ts / google-oauth.ts auth + sessions
     settings.ts / social-stats.ts  store + social-proof config
@@ -200,10 +207,12 @@ Tests create only throwaway data and clean up after themselves.
 | --- | --- |
 | `npm run dev` | Dev server on port 3000 |
 | `npm run build` | `prisma generate` + production build (`postbuild` generates sitemap + robots) |
-| `npm run typecheck` | Typecheck (`tsc --noEmit`) |
+| `npm run typecheck` | Typecheck (`tsc --noEmit`, covers `src/`, `scripts/`, `prisma/`) |
+| `npm run lint` | Next.js lint |
 | `npm start` | Serve the production build |
+| `npm run setup` | `prisma generate` + `db push` + seed (first-time setup) |
 | `npm run db:push` / `db:seed` / `db:reset` / `db:studio` | Schema sync, seed, reset, Studio |
-| `npm run test:smoke` / `test:coupon` / `test:account` / `test:smtp` / `test:social` | Test suites |
+| `npm run test:smoke` / `test:coupon` / `test:account` / `test:smtp` / `test:social` | Test suites (throwaway data, self-cleaning) |
 | `npm run sitemap` | Regenerate sitemap + robots (also runs automatically after build) |
 | `npm run analyze` | `ANALYZE=true` production build with bundle report |
 

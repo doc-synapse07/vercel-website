@@ -333,6 +333,25 @@ export default async function HomePage() {
         </section>
       )}
 
+      {/* ==================================================================== FREE MOCK TESTS BAND */}
+      <section className="mx-auto max-w-6xl px-4 pb-14">
+        <div className="flex flex-col gap-6 rounded-card border border-ink-200 bg-gradient-to-br from-brand-50 via-white to-ink-50 p-8 dark:border-ink-700 dark:from-brand-950 dark:via-ink-900 dark:to-ink-900 sm:p-10 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <Eyebrow>Free · 27 tests · 3,600 questions</Eyebrow>
+            <h2 className="text-2xl font-bold tracking-tight text-ink-900 dark:text-white sm:text-3xl">
+              Test yourself before the real thing
+            </h2>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-500 dark:text-ink-400">
+              Timed subject and grand tests with instant scoring and explanations.
+              No account needed — free while in beta.
+            </p>
+          </div>
+          <Link href="/mock-tests" className="btn btn-primary btn-md shrink-0">
+            Start a free test <ArrowRight size={15} />
+          </Link>
+        </div>
+      </section>
+
       {/* ==================================================================== TRUST SIGNALS */}
       <section className="border-y border-ink-200 bg-ink-50/60 py-14 dark:border-ink-700 dark:bg-ink-800/40">
         <div className="mx-auto max-w-6xl px-4">

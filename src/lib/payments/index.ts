@@ -56,13 +56,6 @@ export function cashfreeConfigured(): boolean {
   return Boolean(process.env.CASHFREE_APP_ID && process.env.CASHFREE_SECRET_KEY);
 }
 
-export function getActiveProvider(): PaymentProvider | null {
-  if (razorpayConfigured()) return "razorpay";
-  if (stripeConfigured()) return "stripe";
-  if (cashfreeConfigured()) return "cashfree";
-  return null;
-}
-
 /** Providers the customer may choose on the checkout page. */
 export function getAvailableProviders(): PaymentProvider[] {
   const list: PaymentProvider[] = [];
@@ -237,22 +230,12 @@ export function verifyRazorpaySignature(params: {
     .createHmac("sha256", secret)
     .update(`${params.razorpayOrderId}|${params.razorpayPaymentId}`)
     .digest("hex");
-  return expected === params.razorpaySignature;
-}
-
-export function verifyCashfreeSignature(rawBody: string, signature: string): boolean {
-  const secret = process.env.CASHFREE_SECRET_KEY;
-  if (!secret) return false;
-  const crypto = require("crypto") as typeof import("crypto");
-  const expected =
-    crypto.createHmac("sha256", secret).update(rawBody).digest("base64");
-  return expected === signature;
+  const a = Buffer.from(expected);
+  const b = Buffer.from(params.razorpaySignature);
+  if (a.length !== b.length) return false;
+  return crypto.timingSafeEqual(a, b);
 }
 
 export function getStripeClient(): Stripe {
   return getStripe();
-}
-
-export function getRazorpayClient(): Razorpay {
-  return getRazorpay();
 }

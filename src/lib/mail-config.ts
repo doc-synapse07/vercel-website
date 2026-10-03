@@ -205,5 +205,3 @@ export async function getSmtpFormState(): Promise<{
   };
 }
 
-/** Re-exported so callers can tell a sealed value from a plaintext legacy row. */
-export { isEncrypted };

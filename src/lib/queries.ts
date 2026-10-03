@@ -6,10 +6,9 @@ import {
   getRelatedProducts as getRelatedProductsRaw,
   getCategories as getCategoriesRaw,
   getCategoryBySlug as getCategoryBySlugRaw,
-  getSettings as getSettingsRaw,
   getStoreStats as getStoreStatsRaw,
 } from "./store";
-import type { ProductCardData, CategoryNav, Product, Order, Customer, Settings } from "./types";
+import type { ProductCardData, CategoryNav, Product, Settings } from "./types";
 
 function toCardData(p: Product, names?: Map<string, string>): ProductCardData {
   const key = p.categorySlug;
@@ -179,21 +178,4 @@ export async function getStoreStats() {
   };
 }
 
-export async function getSettings(): Promise<Settings> {
-  const raw = await getSettingsRaw();
-  return {
-    siteName: raw.siteName || "SYNAPSE.07",
-    siteTagline: raw.siteTagline || "Learn Smart. Revise Fast. Crack Exams.",
-    supportEmail: raw.supportEmail || "support@synapse07.store",
-    supportPhone: raw.supportPhone || "+91 7041169494",
-    instagramUrl: raw.instagramUrl || "",
-    youtubeUrl: raw.youtubeUrl || "",
-    telegramUrl: raw.telegramUrl || "",
-    whatsappUrl: raw.whatsappUrl || "",
-    heroTitle: raw.heroTitle || "Learn Smart. Revise Fast.",
-    heroSubtitle: raw.heroSubtitle || "Crack Exams.",
-    upiId: raw.upiId || "",
-  };
-}
-
-export type { ProductCardData, CategoryNav, Product, Order, Customer, Settings };
+export type { ProductCardData, CategoryNav, Product, Settings };

@@ -4,19 +4,8 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { getCurrentAdmin } from "@/lib/auth";
 import { releaseRedemption } from "@/lib/coupons";
-import { safeAsync, formatINR } from "@/lib/utils";
+import { safeAsync } from "@/lib/utils";
 import { ORDER_STATUSES } from "@/lib/constants";
-import { orderConfirmationEmail, orderShippingEmail, orderPackedEmail } from "@/lib/order-emails";
-import { sendMail } from "@/lib/mail";
-
-function escapeHtml(input: string): string {
-  return input
-    .replace(/&/g, "\u0026")
-    .replace(/</g, "\u003C")
-    .replace(/>/g, "\u003E")
-    .replace(/"/g, "\u0022")
-    .replace(/'/g, "\u0027");
-}
 
 export async function updateOrderStatusAction(formData: FormData) {
   const admin = await getCurrentAdmin();
@@ -39,33 +28,13 @@ export async function updateOrderStatusAction(formData: FormData) {
   await prisma.order.update({ where: { id: orderId }, data: { status } });
 
   // Moving a paid order to a non-paid state should release its coupon usage
+  // so the coupon becomes available to someone else again.
   if (previousStatus === "PAID" && status !== "PAID") {
     if (order.couponId) {
       await safeAsync("coupon-release", () =>
         releaseRedemption({ couponId: order.couponId!, orderId }),
       );
     }
-  }
-
-  // Send status change emails
-  try {
-    if (status === "SHIPPED" && previousStatus !== "SHIPPED") {
-      await safeAsync("email-shipped", () => sendMail({
-        to: order.email,
-        subject: `Your order ${order.orderNumber} has shipped`,
-        html: orderShippingEmail(order as any),
-        text: `Your order ${order.orderNumber} has been shipped.`,
-      }));
-    } else if (status === "PACKED" && previousStatus !== "PACKED") {
-      await safeAsync("email-packed", () => sendMail({
-        to: order.email,
-        subject: `Your order ${order.orderNumber} is packed`,
-        html: orderPackedEmail(order as any),
-        text: `Your order ${order.orderNumber} is packed and ready to ship.`,
-      }));
-    }
-  } catch (error) {
-    console.error("[order:status-email] failed:", error);
   }
 
   revalidatePath("/admin/orders");
